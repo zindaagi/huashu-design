@@ -1,0 +1,67 @@
+<svg width="0" height="0" style="position:absolute" aria-hidden="true" focusable="false">
+  <defs>
+    <linearGradient id="ringgrad" x1="0" y1="0" x2="1" y2="1">
+      <stop offset="0" style="stop-color:var(--a1)"></stop>
+      <stop offset="1" style="stop-color:var(--a2)"></stop>
+    </linearGradient>
+  </defs>
+</svg>
+
+<div class="app" id="app">
+  <nav class="rail" aria-label="Main">
+    <a class="brand" href="#home" aria-label="Rime, home">
+      <svg class="i" viewBox="0 0 24 24" aria-hidden="true"><path d="M12 2.5v19M3.8 7.25l16.4 9.5M20.2 7.25 3.8 16.75M12 6.5 9.6 4.4M12 6.5l2.4-2.1M12 17.5l-2.4 2.1M12 17.5l2.4 2.1"></path></svg>
+      RIME <small>recall</small>
+    </a>
+    <div class="nav" id="nav-rail"></div>
+    <button class="btn" data-act="open-claude" id="rail-claude">Ask Mr Claude</button>
+    <div class="rail-foot">
+      <div class="rank" id="rank"></div>
+      <div class="sync" id="sync-rail"><i></i><span>Opening</span></div>
+    </div>
+  </nav>
+
+  <header class="top">
+    <a class="brand" href="#home" aria-label="Rime, home">
+      <svg class="i" viewBox="0 0 24 24" aria-hidden="true"><path d="M12 2.5v19M3.8 7.25l16.4 9.5M20.2 7.25 3.8 16.75M12 6.5 9.6 4.4M12 6.5l2.4-2.1M12 17.5l-2.4 2.1M12 17.5l2.4 2.1"></path></svg>
+      RIME
+    </a>
+    <span class="grow"></span>
+    <span class="pill" id="top-streak" title="Day streak"></span>
+    <button class="btn sm" data-act="open-claude" aria-label="Ask Mr Claude" id="top-claude"></button>
+  </header>
+
+  <main class="main" id="main">
+    <div class="wrap" id="view">
+      <div class="boot">
+        <div>
+          <canvas id="boot-art" data-crystal="boot" data-g="0.7" width="120" height="120"></canvas>
+          <p class="lbl">Opening your library</p>
+        </div>
+      </div>
+    </div>
+  </main>
+
+  <nav class="tabs" id="nav-tabs" aria-label="Main"></nav>
+</div>
+
+<aside class="mc" id="mc" aria-label="Mr Claude" aria-hidden="true">
+  <div class="mc-h">
+    <div class="grow">
+      <b>Mr Claude</b>
+      <p class="lbl" id="mc-ctx">Your teacher</p>
+    </div>
+    <button class="btn sm ghost" data-act="close-claude" aria-label="Close Mr Claude" id="mc-close"></button>
+  </div>
+  <div class="mc-tools" id="mc-tools" hidden></div>
+  <div class="mc-log" id="mc-log" aria-live="polite"></div>
+  <div class="mc-quick" id="mc-quick"></div>
+  <form class="mc-form" id="mc-form">
+    <textarea id="mc-in" rows="1" placeholder="Ask anything about this" aria-label="Message Mr Claude" enterkeyhint="send"></textarea>
+    <button class="btn pri" type="submit" id="mc-send" aria-label="Send"></button>
+  </form>
+</aside>
+
+<div id="sheet-root"></div>
+<div class="toast" id="toast" role="status" aria-live="polite"></div>
+<canvas id="fx" aria-hidden="true"></canvas>
