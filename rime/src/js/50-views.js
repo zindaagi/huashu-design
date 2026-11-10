@@ -67,7 +67,7 @@ function viewWelcome() {
   <div class="how">
     <div class="card"><span class="lbl">Step 1</span><b>Bring material</b><p>Notes, a syllabus, PDFs, Word files, spreadsheets. A two-column table becomes cards instantly.</p></div>
     <div class="card"><span class="lbl">Step 2</span><b>Answer</b><p>Multiple choice, typed answers, or both. Typos are forgiven, weak spots come back sooner, strong ones rest longer.</p></div>
-    <div class="card"><span class="lbl">Step 3</span><b>Ask Mr Claude</b><p>A teacher who has read your notes: hints mid-question, the reason behind an answer, or full lessons that follow your syllabus.</p></div>
+    <div class="card"><span class="lbl">Step 3</span><b>Ask BOLT</b><p>A teacher who has read your notes: hints mid-question, the reason behind an answer, or full lessons that follow your syllabus.</p></div>
   </div>
   <aside class="side">${goalCard()}</aside>
   </div>`;
@@ -218,7 +218,7 @@ function viewSetup() {
 }
 function fbHTML(c) {
   if (c.state === 'ask') return '';
-  if (c.state === 'checking') return '<div class="fb"><p class="checking"><span class="dots"><i></i><i></i><i></i></span>Mr Claude is marking your answer</p></div>';
+  if (c.state === 'checking') return '<div class="fb"><p class="checking"><span class="dots"><i></i><i></i><i></i></span>BOLT is marking your answer</p></div>';
   const card = c.card, why = card.why ? `<p class="fb-why">${esc(card.why)}</p>` : '';
   if (c.state === 'self') {
     return `<div class="fb"><div class="fb-head"><strong>Compare</strong></div>${c.note ? `<p class="fb-note">${esc(c.note)}</p>` : ''}
@@ -282,7 +282,7 @@ function viewDone() {
       <div class="chips">
         <button class="btn pri lg" data-act="again">${ic('bolt')}Go again</button>
         ${r.misses.length ? '<button class="btn lg" data-act="drill-misses">Drill the misses</button>' : ''}
-        ${r.misses.length && aiOK() ? `<button class="btn lg" data-act="ask-misses">${ic('chat')}Go over them with Mr Claude</button>` : ''}
+        ${r.misses.length && aiOK() ? `<button class="btn lg" data-act="ask-misses">${ic('chat')}Go over them with BOLT</button>` : ''}
         <button class="btn lg ghost" data-act="done-home">Home</button>
       </div>
     </section>
@@ -293,21 +293,21 @@ function viewDone() {
 /* ----- learn ----- */
 function viewLearn() {
   const ids = scopeIds();
-  if (!ids.length) return needDeck('Learn', 'Mr Claude teaches from your own notes. Add a deck first, with a syllabus if you have one.');
+  if (!ids.length) return needDeck('Learn', 'BOLT teaches from your own notes. Add a deck first, with a syllabus if you have one.');
   const did = UI.learn && ids.includes(UI.learn) ? UI.learn : (UI.learn = activeDeck()), d = S.decks[did], plan = d.plan || [];
   const busy = UI.planBusy === did, sub = curSub();
-  return `<div class="page-h"><div><p class="lbl">Learn with Mr Claude${sub ? ' · ' + esc(subName(sub)) : ''}</p><h1>${esc(d.name)}</h1></div></div>
+  return `<div class="page-h"><div><p class="lbl">Learn with BOLT${sub ? ' · ' + esc(subName(sub)) : ''}</p><h1>${esc(d.name)}</h1></div></div>
   ${ids.length > 1 ? `<div class="chips">${ids.map(id => chip(esc(S.decks[id].name), id === did, 'ln-deck', 'data-did="' + id + '"')).join('')}</div>` : ''}
-  ${aiOK() ? '' : `<div class="banner">${ic('warn')}<span>Mr Claude is not available in this view, so lessons cannot run here. Open the page inside Claude and allow it to use Claude.</span></div>`}
+  ${aiOK() ? '' : `<div class="banner">${ic('warn')}<span>BOLT is not available in this view, so lessons cannot run here. Open the page inside Claude and allow it to use Claude.</span></div>`}
   <section class="card sec"><div class="sec-h"><h2>Syllabus</h2><button class="btn sm" data-act="syl-edit">${d.syl ? 'Edit' : 'Add syllabus'}</button></div>
-    <p class="note">${d.syl ? Number(d.syl).toLocaleString() + ' characters on file. Lessons and new questions follow its order and wording.' : 'Paste or upload your syllabus and Mr Claude teaches to it, point by point. Without one, lessons follow the structure of your notes.'}</p></section>
+    <p class="note">${d.syl ? Number(d.syl).toLocaleString() + ' characters on file. Lessons and new questions follow its order and wording.' : 'Paste or upload your syllabus and BOLT teaches to it, point by point. Without one, lessons follow the structure of your notes.'}</p></section>
   <section class="sec"><div class="sec-h"><h2>Lesson plan</h2>${plan.length ? `<span class="lbl">${plan.filter(l => l.st === 2).length}/${plan.length} done</span>` : ''}</div>
-    ${busy ? '<div class="card"><p class="checking"><span class="dots"><i></i><i></i><i></i></span>Mr Claude is reading your material and planning lessons</p></div>'
+    ${busy ? '<div class="card"><p class="checking"><span class="dots"><i></i><i></i><i></i></span>BOLT is reading your material and planning lessons</p></div>'
     : plan.length ? `<div class="card"><div class="list">${plan.map((l, i) => `<div class="lesson${l.st === 2 ? ' done' : ''}"><span class="lesson-n">${String(i + 1).padStart(2, '0')}</span><span class="lesson-t">${esc(l.title)}</span><span class="lesson-g">${esc((l.goals || []).join(' · '))}${l.thin ? ' · thin in your notes' : ''}</span><button class="btn sm${l.st === 0 ? ' pri' : ''}" data-act="lesson-open" data-id="${l.id}" ${aiOK() ? '' : 'disabled'}>${l.st === 2 ? 'Revisit' : l.st === 1 ? 'Resume' : 'Start'}</button></div>`).join('')}</div></div>
        <div><button class="btn sm" data-act="plan-build" ${aiOK() ? '' : 'disabled'}>Rebuild the plan</button></div>`
-      : `<div class="card sec"><p class="note">Mr Claude reads your ${d.syl ? 'syllabus and notes' : 'notes'} and lays out short lessons in order. Each one ends with questions to check yourself, and can turn into a quiz.</p><div><button class="btn pri" data-act="plan-build" ${aiOK() ? '' : 'disabled'}>Build the lesson plan</button></div></div>`}
+      : `<div class="card sec"><p class="note">BOLT reads your ${d.syl ? 'syllabus and notes' : 'notes'} and lays out short lessons in order. Each one ends with questions to check yourself, and can turn into a quiz.</p><div><button class="btn pri" data-act="plan-build" ${aiOK() ? '' : 'disabled'}>Build the lesson plan</button></div></div>`}
   </section>
-  <section class="card sec"><div class="sec-h"><h2>Office hours</h2></div><p class="note">Ask anything about this deck outside a lesson or a quiz.</p><div><button class="btn" data-act="ask-deck" ${aiOK() ? '' : 'disabled'}>${ic('chat')}Ask Mr Claude</button></div></section>`;
+  <section class="card sec"><div class="sec-h"><h2>Office hours</h2></div><p class="note">Ask anything about this deck outside a lesson or a quiz.</p><div><button class="btn" data-act="ask-deck" ${aiOK() ? '' : 'disabled'}>${ic('chat')}Ask BOLT</button></div></section>`;
 }
 
 /* ----- library ----- */
@@ -421,7 +421,7 @@ function viewPrefs() {
     <section class="pref"><h3>Marking typed answers</h3>
       <div class="chips">${chip('Strict', p.typo === 'strict', 'pf-typo', 'data-v="strict"')}${chip('Balanced', p.typo === 'balanced', 'pf-typo', 'data-v="balanced"')}${chip('Generous', p.typo === 'generous', 'pf-typo', 'data-v="generous"')}</div>
       <p class="note">${{ strict: 'Spelling must be exact. Case, accents and punctuation are still ignored.', balanced: 'One or two slipped letters are forgiven. Numbers must be exact, and a typo that lands on a different answer from the deck is not forgiven.', generous: 'Extra room for long or unfamiliar words.' }[p.typo]} Anything the spelling check cannot settle goes to Claude, and you can always overrule the mark.</p></section>
-    <section class="pref"><h3>Mr Claude's pace</h3>
+    <section class="pref"><h3>BOLT's pace</h3>
       <div class="chips">${chip('Quick', p.pace === 'quick', 'pf-pace', 'data-v="quick"')}${chip('Thorough', p.pace === 'thorough', 'pf-pace', 'data-v="thorough"')}${chip('Deepest', p.pace === 'deep', 'pf-pace', 'data-v="deep"')}</div>
       <p class="note">${{ quick: 'Answers start almost at once. Best for hints mid-question.', thorough: 'Thinks before replying. A short wait, more careful explanations.', deep: 'The most capable model. Slowest, for hard material.' }[p.pace]} Lessons always use at least Thorough.</p></section>
     <section class="pref"><h3>Your data</h3><p class="note">${syncLine}</p>

@@ -152,13 +152,13 @@ async function aiPlan(did, signal) {
   return v.map(x => ({ id: mkid('l'), title: str(x && x.title, 90), goals: arr(x && x.goals, 4, 160), thin: !!(x && x.thin), st: 0 })).filter(x => x.title).slice(0, 14);
 }
 
-/* the standing instructions turn for a Mr Claude conversation, rebuilt for every message */
+/* the standing instructions turn for a BOLT conversation, rebuilt for every message */
 async function chatRules(th, query) {
   const d = th.did ? S.decks[th.did] : null;
   let src = { parts: [], syllabus: '' };
   if (d) { try { src = await Store.loadSrc(th.did); } catch (e) {} }
   const L = [
-    'You are Mr Claude, a patient, exacting teacher inside a study app. You are talking with one student.',
+    'You are BOLT, a patient, exacting teacher inside a study app. You are talking with one student. BOLT is the app\u2019s name for you: you are Claude, made by Anthropic, and you say so plainly if the student asks what you are.',
     '',
     'How you teach:',
     '- Teach from the student’s own MATERIAL and SYLLABUS below whenever they cover the point. If you go beyond them, say so in a few words.',

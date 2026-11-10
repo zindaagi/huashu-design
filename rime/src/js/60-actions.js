@@ -628,7 +628,7 @@ async function editSyllabus() {
     title: 'Syllabus',
     html: `<div class="field"><label class="lbl" for="sy-text">What you are expected to know</label><textarea class="ta" id="sy-text" style="min-height:200px" placeholder="Paste the syllabus, specification or learning outcomes.">${esc(src.syllabus)}</textarea>
       <div><button class="btn sm" data-act="sy-file">${ic('file')}Upload a file</button><input type="file" id="sy-file" hidden accept="${FILE_ACCEPT}"></div></div>
-      <p class="note">Mr Claude plans lessons in this order and new questions are written to match it.</p>`,
+      <p class="note">BOLT plans lessons in this order and new questions are written to match it.</p>`,
     acts: [{ label: 'Cancel', cls: 'ghost' }, { label: 'Save', cls: 'pri', fn: async () => {
       const text = $('#sy-text').value.trim();
       closeSheet();
@@ -683,7 +683,7 @@ async function lessonQuiz() {
   go('library');
 }
 
-/* ----- Mr Claude ----- */
+/* ----- BOLT ----- */
 const Chat = { open: false, thread: null, busy: false, ctl: null, err: '', quiz: null, free: {} };
 function quickPrompts(th) {
   if (th.kind === 'quiz') { const c = th.cur && th.cur(); return c && c.state === 'done' ? ['Why is that the answer?', 'Give me a similar example', 'How do I remember this?'] : ['Give me a hint', 'Explain the idea behind this', 'Reveal the answer and explain']; }
@@ -720,11 +720,11 @@ function paintChat() {
   const tools = $('#mc-tools'), l = lessonOf(th);
   tools.hidden = th.kind !== 'lesson';
   tools.innerHTML = th.kind === 'lesson' ? `<button class="btn sm" data-act="lesson-quiz" ${Chat.busy ? 'disabled' : ''}>${ic('bolt')}Quiz me on this</button><button class="btn sm" data-act="lesson-done">${ic('check')}${l && l.st === 2 ? 'Done' : 'Mark as done'}</button>` : '';
-  const msgs = th.turns.map(t => t.role === 'user' ? (t.auto ? '' : '<div class="msg me">' + esc(t.content) + '</div>') : '<div class="msg ai"><p class="lbl who">Mr Claude</p><div class="prose">' + md(t.content) + '</div></div>').join('');
-  const empty = `<div class="mc-empty"><canvas data-bolt="mr-claude" data-g="0.85"></canvas><p>${aiOK() ? (th.kind === 'quiz' ? 'Stuck on this one? Ask for a hint, or for the idea behind it. The answer stays hidden until you ask for it.' : 'Ask about anything in your notes. Answers draw on the material and syllabus in this deck.') : 'Mr Claude is not available in this view. Open the page inside Claude and allow it to use Claude.'}</p></div>`;
+  const msgs = th.turns.map(t => t.role === 'user' ? (t.auto ? '' : '<div class="msg me">' + esc(t.content) + '</div>') : '<div class="msg ai"><p class="lbl who">BOLT</p><div class="prose">' + md(t.content) + '</div></div>').join('');
+  const empty = `<div class="mc-empty"><canvas data-bolt="mr-claude" data-g="0.85"></canvas><p>${aiOK() ? (th.kind === 'quiz' ? 'Stuck on this one? Ask for a hint, or for the idea behind it. The answer stays hidden until you ask for it.' : 'Ask about anything in your notes. Answers draw on the material and syllabus in this deck.') : 'BOLT is not available in this view. Open the page inside Claude and allow it to use Claude.'}</p></div>`;
   const log = $('#mc-log');
   log.innerHTML = (msgs || (Chat.busy ? '' : empty)) +
-    (Chat.busy ? '<div class="msg ai"><p class="lbl who">Mr Claude</p><div class="prose" id="mc-live"><p class="checking"><span class="dots"><i></i><i></i><i></i></span>Thinking</p></div></div>' : '') +
+    (Chat.busy ? '<div class="msg ai"><p class="lbl who">BOLT</p><div class="prose" id="mc-live"><p class="checking"><span class="dots"><i></i><i></i><i></i></span>Thinking</p></div></div>' : '') +
     (Chat.err ? '<div class="msg err">' + esc(Chat.err) + '</div>' : '');
   drawBolts(log);
   log.scrollTop = log.scrollHeight;
@@ -738,7 +738,7 @@ async function chatSend(text, auto) {
   const th = Chat.thread;
   text = String(text || '').trim();
   if (!th || Chat.busy || !text) return;
-  if (!aiOK()) { toast('Mr Claude is not available in this view.'); return; }
+  if (!aiOK()) { toast('BOLT is not available in this view.'); return; }
   th.turns.push({ role: 'user', content: text, auto: !!auto });
   Chat.busy = true; Chat.err = '';
   const ctl = Chat.ctl = new AbortController();

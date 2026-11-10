@@ -115,7 +115,7 @@ function subStyle(c, flat) {
   return '--c:' + c + ';--c2:' + c2 + ';--co:' + onColor(c, c2);
 }
 
-/* a small, escape-first Markdown renderer for Mr Claude's replies */
+/* a small, escape-first Markdown renderer for BOLT's replies */
 function mdInline(s) {
   return s
     .replace(/`([^`]+)`/g, '<code>$1</code>')

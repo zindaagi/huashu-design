@@ -328,7 +328,7 @@ svg{display:block}
 .pref h3{font:700 20px/1 var(--fd);text-transform:uppercase;letter-spacing:.04em}
 .preview{height:64px;background:var(--grad);clip-path:polygon(0 0,calc(100% - 14px) 0,100% 14px,100% 100%,14px 100%,0 calc(100% - 14px));display:flex;align-items:center;padding:0 18px;color:var(--on);font:800 26px/1 var(--fd);letter-spacing:.06em;text-transform:uppercase}
 
-/* ---------- Mr Claude ---------- */
+/* ---------- BOLT ---------- */
 .mc{position:fixed;inset:0 0 0 auto;z-index:40;width:min(460px,100%);display:flex;flex-direction:column;background:var(--panel);border-left:1px solid var(--line2);padding-top:env(safe-area-inset-top,0px);padding-bottom:env(safe-area-inset-bottom,0px);padding-right:env(safe-area-inset-right,0px);transform:translateX(103%);visibility:hidden;transition:transform .2s ease-out,visibility 0s .2s}
 .mc.open{transform:none;visibility:visible;transition:transform .2s ease-out,visibility 0s}
 .mc.wide{width:min(760px,100%)}
@@ -504,7 +504,7 @@ svg{display:block}
       <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M13.6 1.5 3.8 13.6h6.3L8.4 22.5 20.2 9.4h-6.6z" fill="url(#ringgrad)"></path></svg>
     </a>
     <div class="nav" id="nav-rail"></div>
-    <button class="btn" data-act="open-claude" id="rail-claude">Ask Mr Claude</button>
+    <button class="btn" data-act="open-claude" id="rail-claude">Ask BOLT</button>
     <div class="rail-foot">
       <div class="rank" id="rank"></div>
       <div class="sync" id="sync-rail"><i></i><span>Opening</span></div>
@@ -516,7 +516,7 @@ svg{display:block}
       <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M13.6 1.5 3.8 13.6h6.3L8.4 22.5 20.2 9.4h-6.6z" fill="url(#ringgrad)"></path></svg>
     </a>
     <div class="subs grow" id="subs-top" role="group" aria-label="Subjects"></div>
-    <button class="btn sm" data-act="open-claude" aria-label="Ask Mr Claude" id="top-claude"></button>
+    <button class="btn sm" data-act="open-claude" aria-label="Ask BOLT" id="top-claude"></button>
   </header>
 
   <div class="subbar"><div class="subs" id="subs-bar" role="group" aria-label="Subjects"></div></div>
@@ -535,19 +535,19 @@ svg{display:block}
   <nav class="tabs" id="nav-tabs" aria-label="Main"></nav>
 </div>
 
-<aside class="mc" id="mc" aria-label="Mr Claude" aria-hidden="true">
+<aside class="mc" id="mc" aria-label="BOLT" aria-hidden="true">
   <div class="mc-h">
     <div class="grow">
-      <b>Mr Claude</b>
+      <b>BOLT</b>
       <p class="lbl" id="mc-ctx">Your teacher</p>
     </div>
-    <button class="btn sm ghost" data-act="close-claude" aria-label="Close Mr Claude" id="mc-close"></button>
+    <button class="btn sm ghost" data-act="close-claude" aria-label="Close BOLT" id="mc-close"></button>
   </div>
   <div class="mc-tools" id="mc-tools" hidden></div>
   <div class="mc-log" id="mc-log" aria-live="polite"></div>
   <div class="mc-quick" id="mc-quick"></div>
   <form class="mc-form" id="mc-form">
-    <textarea id="mc-in" rows="1" placeholder="Ask anything about this" aria-label="Message Mr Claude" enterkeyhint="send"></textarea>
+    <textarea id="mc-in" rows="1" placeholder="Ask anything about this" aria-label="Message BOLT" enterkeyhint="send"></textarea>
     <button class="btn pri" type="submit" id="mc-send" aria-label="Send"></button>
   </form>
 </aside>
@@ -675,7 +675,7 @@ function subStyle(c, flat) {
   return '--c:' + c + ';--c2:' + c2 + ';--co:' + onColor(c, c2);
 }
 
-/* a small, escape-first Markdown renderer for Mr Claude's replies */
+/* a small, escape-first Markdown renderer for BOLT's replies */
 function mdInline(s) {
   return s
     .replace(/`([^`]+)`/g, '<code>$1</code>')
@@ -1609,13 +1609,13 @@ async function aiPlan(did, signal) {
   return v.map(x => ({ id: mkid('l'), title: str(x && x.title, 90), goals: arr(x && x.goals, 4, 160), thin: !!(x && x.thin), st: 0 })).filter(x => x.title).slice(0, 14);
 }
 
-/* the standing instructions turn for a Mr Claude conversation, rebuilt for every message */
+/* the standing instructions turn for a BOLT conversation, rebuilt for every message */
 async function chatRules(th, query) {
   const d = th.did ? S.decks[th.did] : null;
   let src = { parts: [], syllabus: '' };
   if (d) { try { src = await Store.loadSrc(th.did); } catch (e) {} }
   const L = [
-    'You are Mr Claude, a patient, exacting teacher inside a study app. You are talking with one student.',
+    'You are BOLT, a patient, exacting teacher inside a study app. You are talking with one student. BOLT is the app\u2019s name for you: you are Claude, made by Anthropic, and you say so plainly if the student asks what you are.',
     '',
     'How you teach:',
     '- Teach from the student\u2019s own MATERIAL and SYLLABUS below whenever they cover the point. If you go beyond them, say so in a few words.',
@@ -2157,7 +2157,7 @@ function viewWelcome() {
   <div class="how">
     <div class="card"><span class="lbl">Step 1</span><b>Bring material</b><p>Notes, a syllabus, PDFs, Word files, spreadsheets. A two-column table becomes cards instantly.</p></div>
     <div class="card"><span class="lbl">Step 2</span><b>Answer</b><p>Multiple choice, typed answers, or both. Typos are forgiven, weak spots come back sooner, strong ones rest longer.</p></div>
-    <div class="card"><span class="lbl">Step 3</span><b>Ask Mr Claude</b><p>A teacher who has read your notes: hints mid-question, the reason behind an answer, or full lessons that follow your syllabus.</p></div>
+    <div class="card"><span class="lbl">Step 3</span><b>Ask BOLT</b><p>A teacher who has read your notes: hints mid-question, the reason behind an answer, or full lessons that follow your syllabus.</p></div>
   </div>
   <aside class="side">${goalCard()}</aside>
   </div>`;
@@ -2308,7 +2308,7 @@ function viewSetup() {
 }
 function fbHTML(c) {
   if (c.state === 'ask') return '';
-  if (c.state === 'checking') return '<div class="fb"><p class="checking"><span class="dots"><i></i><i></i><i></i></span>Mr Claude is marking your answer</p></div>';
+  if (c.state === 'checking') return '<div class="fb"><p class="checking"><span class="dots"><i></i><i></i><i></i></span>BOLT is marking your answer</p></div>';
   const card = c.card, why = card.why ? `<p class="fb-why">${esc(card.why)}</p>` : '';
   if (c.state === 'self') {
     return `<div class="fb"><div class="fb-head"><strong>Compare</strong></div>${c.note ? `<p class="fb-note">${esc(c.note)}</p>` : ''}
@@ -2372,7 +2372,7 @@ function viewDone() {
       <div class="chips">
         <button class="btn pri lg" data-act="again">${ic('bolt')}Go again</button>
         ${r.misses.length ? '<button class="btn lg" data-act="drill-misses">Drill the misses</button>' : ''}
-        ${r.misses.length && aiOK() ? `<button class="btn lg" data-act="ask-misses">${ic('chat')}Go over them with Mr Claude</button>` : ''}
+        ${r.misses.length && aiOK() ? `<button class="btn lg" data-act="ask-misses">${ic('chat')}Go over them with BOLT</button>` : ''}
         <button class="btn lg ghost" data-act="done-home">Home</button>
       </div>
     </section>
@@ -2383,21 +2383,21 @@ function viewDone() {
 /* ----- learn ----- */
 function viewLearn() {
   const ids = scopeIds();
-  if (!ids.length) return needDeck('Learn', 'Mr Claude teaches from your own notes. Add a deck first, with a syllabus if you have one.');
+  if (!ids.length) return needDeck('Learn', 'BOLT teaches from your own notes. Add a deck first, with a syllabus if you have one.');
   const did = UI.learn && ids.includes(UI.learn) ? UI.learn : (UI.learn = activeDeck()), d = S.decks[did], plan = d.plan || [];
   const busy = UI.planBusy === did, sub = curSub();
-  return `<div class="page-h"><div><p class="lbl">Learn with Mr Claude${sub ? ' \u00b7 ' + esc(subName(sub)) : ''}</p><h1>${esc(d.name)}</h1></div></div>
+  return `<div class="page-h"><div><p class="lbl">Learn with BOLT${sub ? ' \u00b7 ' + esc(subName(sub)) : ''}</p><h1>${esc(d.name)}</h1></div></div>
   ${ids.length > 1 ? `<div class="chips">${ids.map(id => chip(esc(S.decks[id].name), id === did, 'ln-deck', 'data-did="' + id + '"')).join('')}</div>` : ''}
-  ${aiOK() ? '' : `<div class="banner">${ic('warn')}<span>Mr Claude is not available in this view, so lessons cannot run here. Open the page inside Claude and allow it to use Claude.</span></div>`}
+  ${aiOK() ? '' : `<div class="banner">${ic('warn')}<span>BOLT is not available in this view, so lessons cannot run here. Open the page inside Claude and allow it to use Claude.</span></div>`}
   <section class="card sec"><div class="sec-h"><h2>Syllabus</h2><button class="btn sm" data-act="syl-edit">${d.syl ? 'Edit' : 'Add syllabus'}</button></div>
-    <p class="note">${d.syl ? Number(d.syl).toLocaleString() + ' characters on file. Lessons and new questions follow its order and wording.' : 'Paste or upload your syllabus and Mr Claude teaches to it, point by point. Without one, lessons follow the structure of your notes.'}</p></section>
+    <p class="note">${d.syl ? Number(d.syl).toLocaleString() + ' characters on file. Lessons and new questions follow its order and wording.' : 'Paste or upload your syllabus and BOLT teaches to it, point by point. Without one, lessons follow the structure of your notes.'}</p></section>
   <section class="sec"><div class="sec-h"><h2>Lesson plan</h2>${plan.length ? `<span class="lbl">${plan.filter(l => l.st === 2).length}/${plan.length} done</span>` : ''}</div>
-    ${busy ? '<div class="card"><p class="checking"><span class="dots"><i></i><i></i><i></i></span>Mr Claude is reading your material and planning lessons</p></div>'
+    ${busy ? '<div class="card"><p class="checking"><span class="dots"><i></i><i></i><i></i></span>BOLT is reading your material and planning lessons</p></div>'
     : plan.length ? `<div class="card"><div class="list">${plan.map((l, i) => `<div class="lesson${l.st === 2 ? ' done' : ''}"><span class="lesson-n">${String(i + 1).padStart(2, '0')}</span><span class="lesson-t">${esc(l.title)}</span><span class="lesson-g">${esc((l.goals || []).join(' \u00b7 '))}${l.thin ? ' \u00b7 thin in your notes' : ''}</span><button class="btn sm${l.st === 0 ? ' pri' : ''}" data-act="lesson-open" data-id="${l.id}" ${aiOK() ? '' : 'disabled'}>${l.st === 2 ? 'Revisit' : l.st === 1 ? 'Resume' : 'Start'}</button></div>`).join('')}</div></div>
        <div><button class="btn sm" data-act="plan-build" ${aiOK() ? '' : 'disabled'}>Rebuild the plan</button></div>`
-      : `<div class="card sec"><p class="note">Mr Claude reads your ${d.syl ? 'syllabus and notes' : 'notes'} and lays out short lessons in order. Each one ends with questions to check yourself, and can turn into a quiz.</p><div><button class="btn pri" data-act="plan-build" ${aiOK() ? '' : 'disabled'}>Build the lesson plan</button></div></div>`}
+      : `<div class="card sec"><p class="note">BOLT reads your ${d.syl ? 'syllabus and notes' : 'notes'} and lays out short lessons in order. Each one ends with questions to check yourself, and can turn into a quiz.</p><div><button class="btn pri" data-act="plan-build" ${aiOK() ? '' : 'disabled'}>Build the lesson plan</button></div></div>`}
   </section>
-  <section class="card sec"><div class="sec-h"><h2>Office hours</h2></div><p class="note">Ask anything about this deck outside a lesson or a quiz.</p><div><button class="btn" data-act="ask-deck" ${aiOK() ? '' : 'disabled'}>${ic('chat')}Ask Mr Claude</button></div></section>`;
+  <section class="card sec"><div class="sec-h"><h2>Office hours</h2></div><p class="note">Ask anything about this deck outside a lesson or a quiz.</p><div><button class="btn" data-act="ask-deck" ${aiOK() ? '' : 'disabled'}>${ic('chat')}Ask BOLT</button></div></section>`;
 }
 
 /* ----- library ----- */
@@ -2511,7 +2511,7 @@ function viewPrefs() {
     <section class="pref"><h3>Marking typed answers</h3>
       <div class="chips">${chip('Strict', p.typo === 'strict', 'pf-typo', 'data-v="strict"')}${chip('Balanced', p.typo === 'balanced', 'pf-typo', 'data-v="balanced"')}${chip('Generous', p.typo === 'generous', 'pf-typo', 'data-v="generous"')}</div>
       <p class="note">${{ strict: 'Spelling must be exact. Case, accents and punctuation are still ignored.', balanced: 'One or two slipped letters are forgiven. Numbers must be exact, and a typo that lands on a different answer from the deck is not forgiven.', generous: 'Extra room for long or unfamiliar words.' }[p.typo]} Anything the spelling check cannot settle goes to Claude, and you can always overrule the mark.</p></section>
-    <section class="pref"><h3>Mr Claude's pace</h3>
+    <section class="pref"><h3>BOLT's pace</h3>
       <div class="chips">${chip('Quick', p.pace === 'quick', 'pf-pace', 'data-v="quick"')}${chip('Thorough', p.pace === 'thorough', 'pf-pace', 'data-v="thorough"')}${chip('Deepest', p.pace === 'deep', 'pf-pace', 'data-v="deep"')}</div>
       <p class="note">${{ quick: 'Answers start almost at once. Best for hints mid-question.', thorough: 'Thinks before replying. A short wait, more careful explanations.', deep: 'The most capable model. Slowest, for hard material.' }[p.pace]} Lessons always use at least Thorough.</p></section>
     <section class="pref"><h3>Your data</h3><p class="note">${syncLine}</p>
@@ -3184,7 +3184,7 @@ async function editSyllabus() {
     title: 'Syllabus',
     html: `<div class="field"><label class="lbl" for="sy-text">What you are expected to know</label><textarea class="ta" id="sy-text" style="min-height:200px" placeholder="Paste the syllabus, specification or learning outcomes.">${esc(src.syllabus)}</textarea>
       <div><button class="btn sm" data-act="sy-file">${ic('file')}Upload a file</button><input type="file" id="sy-file" hidden accept="${FILE_ACCEPT}"></div></div>
-      <p class="note">Mr Claude plans lessons in this order and new questions are written to match it.</p>`,
+      <p class="note">BOLT plans lessons in this order and new questions are written to match it.</p>`,
     acts: [{ label: 'Cancel', cls: 'ghost' }, { label: 'Save', cls: 'pri', fn: async () => {
       const text = $('#sy-text').value.trim();
       closeSheet();
@@ -3239,7 +3239,7 @@ async function lessonQuiz() {
   go('library');
 }
 
-/* ----- Mr Claude ----- */
+/* ----- BOLT ----- */
 const Chat = { open: false, thread: null, busy: false, ctl: null, err: '', quiz: null, free: {} };
 function quickPrompts(th) {
   if (th.kind === 'quiz') { const c = th.cur && th.cur(); return c && c.state === 'done' ? ['Why is that the answer?', 'Give me a similar example', 'How do I remember this?'] : ['Give me a hint', 'Explain the idea behind this', 'Reveal the answer and explain']; }
@@ -3276,11 +3276,11 @@ function paintChat() {
   const tools = $('#mc-tools'), l = lessonOf(th);
   tools.hidden = th.kind !== 'lesson';
   tools.innerHTML = th.kind === 'lesson' ? `<button class="btn sm" data-act="lesson-quiz" ${Chat.busy ? 'disabled' : ''}>${ic('bolt')}Quiz me on this</button><button class="btn sm" data-act="lesson-done">${ic('check')}${l && l.st === 2 ? 'Done' : 'Mark as done'}</button>` : '';
-  const msgs = th.turns.map(t => t.role === 'user' ? (t.auto ? '' : '<div class="msg me">' + esc(t.content) + '</div>') : '<div class="msg ai"><p class="lbl who">Mr Claude</p><div class="prose">' + md(t.content) + '</div></div>').join('');
-  const empty = `<div class="mc-empty"><canvas data-bolt="mr-claude" data-g="0.85"></canvas><p>${aiOK() ? (th.kind === 'quiz' ? 'Stuck on this one? Ask for a hint, or for the idea behind it. The answer stays hidden until you ask for it.' : 'Ask about anything in your notes. Answers draw on the material and syllabus in this deck.') : 'Mr Claude is not available in this view. Open the page inside Claude and allow it to use Claude.'}</p></div>`;
+  const msgs = th.turns.map(t => t.role === 'user' ? (t.auto ? '' : '<div class="msg me">' + esc(t.content) + '</div>') : '<div class="msg ai"><p class="lbl who">BOLT</p><div class="prose">' + md(t.content) + '</div></div>').join('');
+  const empty = `<div class="mc-empty"><canvas data-bolt="mr-claude" data-g="0.85"></canvas><p>${aiOK() ? (th.kind === 'quiz' ? 'Stuck on this one? Ask for a hint, or for the idea behind it. The answer stays hidden until you ask for it.' : 'Ask about anything in your notes. Answers draw on the material and syllabus in this deck.') : 'BOLT is not available in this view. Open the page inside Claude and allow it to use Claude.'}</p></div>`;
   const log = $('#mc-log');
   log.innerHTML = (msgs || (Chat.busy ? '' : empty)) +
-    (Chat.busy ? '<div class="msg ai"><p class="lbl who">Mr Claude</p><div class="prose" id="mc-live"><p class="checking"><span class="dots"><i></i><i></i><i></i></span>Thinking</p></div></div>' : '') +
+    (Chat.busy ? '<div class="msg ai"><p class="lbl who">BOLT</p><div class="prose" id="mc-live"><p class="checking"><span class="dots"><i></i><i></i><i></i></span>Thinking</p></div></div>' : '') +
     (Chat.err ? '<div class="msg err">' + esc(Chat.err) + '</div>' : '');
   drawBolts(log);
   log.scrollTop = log.scrollHeight;
@@ -3294,7 +3294,7 @@ async function chatSend(text, auto) {
   const th = Chat.thread;
   text = String(text || '').trim();
   if (!th || Chat.busy || !text) return;
-  if (!aiOK()) { toast('Mr Claude is not available in this view.'); return; }
+  if (!aiOK()) { toast('BOLT is not available in this view.'); return; }
   th.turns.push({ role: 'user', content: text, auto: !!auto });
   Chat.busy = true; Chat.err = '';
   const ctl = Chat.ctl = new AbortController();
