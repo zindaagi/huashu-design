@@ -33,7 +33,7 @@ function selectSub(id) {
   if (UI.route === 'library' && UI.lib.mode === 'new' && UI.nd) {
     // mid-form: keep what has been typed and just file the new deck under the tapped subject
     UI.nd.sub = S.subs[want] ? want : '';
-    S.profile.sub = want; Store.touchActive(); applyLook(); paintSubs(); paintNewDeck();
+    S.profile.sub = want; Store.touchActive(); applyLook(); paintSubs(); paintNewDeck(); zap();
     return;
   }
   S.profile.sub = want;
@@ -41,8 +41,9 @@ function selectSub(id) {
   UI.setup = null; UI.learn = null;
   if (UI.route === 'library') UI.lib = { mode: 'list', did: null, q: '' };
   applyLook();
+  zap();
   if (UI.route === 'prefs' || (UI.route === 'study' && UI.done && !UI.sess)) { UI.done = null; go('home'); }
-  else { render(); $('#main').scrollTop = 0; }
+  else { render(true); $('#main').scrollTop = 0; }
 }
 // keep the tab and theme on the subject of the deck being opened
 function followDeck(did) {
@@ -52,6 +53,7 @@ function followDeck(did) {
   Store.touchActive();
   applyLook();
   paintSubs();
+  zap();
 }
 function subjectSheet(id) {
   const s = id ? S.subs[id] : null;
@@ -103,7 +105,7 @@ function onRoute() {
   UI.route = NAV.some(n => n[0] === r) ? r : 'home';
   // a finished build is only worth showing while you are still on it
   if (UI.route === 'library' && UI.lib.mode === 'build' && !(UI.build && UI.build.status === 'run' && !UI.build.quiet)) UI.lib.mode = S.decks[UI.lib.did] ? 'deck' : 'list';
-  render();
+  render(true);
   $('#main').scrollTop = 0;
   focusAnswer();
 }
@@ -300,7 +302,7 @@ function finishSession() {
   S.profile.sessions.length = Math.min(S.profile.sessions.length, 12);
   Store.saveProfile();
   Store.flush();
-  render();
+  render(true);
   $('#main').scrollTop = 0;
   if (UI.done.c > 0 && UI.done.c >= UI.done.w) setTimeout(() => FX.burst(window.innerWidth / 2, window.innerHeight * 0.3, 1), 260);
 }
@@ -781,7 +783,7 @@ const ACT = {
   'chat-quick': el => chatSend(el.dataset.q),
   'new-deck': () => openNewDeck(),
   sample: () => makeSample(),
-  'set-active': el => { setActive(el.dataset.did); render(); $('#main').scrollTop = 0; },
+  'set-active': el => { setActive(el.dataset.did); render(true); $('#main').scrollTop = 0; },
   'quick-start': () => startSession({ did: activeDeck() }),
   drill: el => startSession({ did: activeDeck(), topics: [el.dataset.topic], mode: 'endless', focus: 'weak' }),
   'retry-cards': el => { delete cardErr[el.dataset.did]; render(); },
@@ -815,14 +817,14 @@ const ACT = {
   'lesson-done': () => { const th = Chat.thread, l = lessonOf(th); if (!l) return; l.st = 2; Store.saveDeck(th.did); toast('Lesson marked as done'); closeChat(); },
   'ask-deck': () => openChat(defaultThread()),
 
-  'lib-open': el => { UI.lib = { mode: 'deck', did: el.dataset.did, q: '' }; followDeck(el.dataset.did); render(); $('#main').scrollTop = 0; },
+  'lib-open': el => { UI.lib = { mode: 'deck', did: el.dataset.did, q: '' }; followDeck(el.dataset.did); render(true); $('#main').scrollTop = 0; },
   sub: el => selectSub(el.dataset.id),
   'sub-add': () => subjectSheet(null),
   'sub-edit': el => subjectSheet(el.dataset.id),
   'sj-color': el => { if (UI.sheet && UI.sheet.setC) UI.sheet.setC(el.dataset.c); },
   'nd-sub': el => { const id = el.dataset.id; UI.nd.sub = id; S.profile.sub = id || null; Store.touchActive(); applyLook(); paintSubs(); paintNewDeck(); },
   'deck-move': el => { const did = UI.lib.did, d = S.decks[did], id = el.dataset.id; if (!d) return; if (S.subs[id]) d.sub = id; else delete d.sub; Store.saveDeck(did); setActive(did); followDeck(did); render(); toast(S.subs[id] ? 'Moved to ' + S.subs[id].name : 'Moved out of its subject'); },
-  'lib-back': () => { UI.lib = { mode: 'list', did: null, q: '' }; UI.nd = null; render(); $('#main').scrollTop = 0; },
+  'lib-back': () => { UI.lib = { mode: 'list', did: null, q: '' }; UI.nd = null; render(true); $('#main').scrollTop = 0; },
   'nd-file': () => $('#nd-files').click(),
   'nd-sylfile': () => $('#nd-sylfile').click(),
   'nd-rm': el => { UI.nd.files.splice(Number(el.dataset.i), 1); paintNewDeck(); },
@@ -957,7 +959,7 @@ function boot() {
     if (kind === 'sync') return paintSync();
     if (kind === 'fail') { paintSync(); return toast(saveCopy(code), 4200); }
     applyLook();
-    if (S.ready && !shown) { shown = true; render(); }
+    if (S.ready && !shown) { shown = true; render(true); }
     else if (kind !== 'same') softRender();   // an echo of our own save changes nothing on screen
     paintSubs(); paintRail(); paintSync();
   };

@@ -80,6 +80,8 @@ function drawBolt(cv, key, g, o) {
   if (o.ghost !== false) { ctx.globalAlpha = 0.24; strokeBolt(ctx, sp, w, h, 1, lw * 0.8); }
   ctx.globalAlpha = 1;
   strokeBolt(ctx, sp, w, h, clamp(g, 0, 1), lw);
+  // a passing flash: the whole channel lights for a moment, whatever the charge
+  if (o.flash > 0) { ctx.globalAlpha = Math.min(1, o.flash); strokeBolt(ctx, sp, w, h, o.reach == null ? 1 : o.reach, lw * 1.3); ctx.globalAlpha = 1; }
 }
 const calm = () => !S.profile.prefs.motion || (window.matchMedia && window.matchMedia('(prefers-reduced-motion: reduce)').matches);
 function growBolt(cv, key, from, to, ms) {

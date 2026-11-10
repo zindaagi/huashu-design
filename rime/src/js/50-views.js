@@ -149,7 +149,7 @@ function viewHome() {
   return `${notices()}<div class="home">
   <section class="hero" aria-label="Active deck">
     <canvas class="hero-art" data-bolt="${did}" data-g="${st.mastery.toFixed(3)}"></canvas>
-    <div class="hero-ghost" aria-hidden="true">${pct(st.mastery)}<i>%</i></div>
+    <div class="hero-ghost" aria-hidden="true" data-count="${pct(st.mastery)}">${pct(st.mastery)}<i>%</i></div>
     <div class="hero-in">
       <p class="lbl">${head} · ${plural(st.total, 'question')} · ${pct(st.mastery)}% charged</p>
       <h1 class="hero-name">${esc(d.name)}</h1>
@@ -271,7 +271,7 @@ function viewDone() {
     <section class="fin-top">
       <canvas class="fin-art" data-bolt="${r.did}" data-g="${r.after.toFixed(3)}" data-from="${r.before.toFixed(3)}"></canvas>
       <p class="lbl">Session complete · ${esc(r.name)}</p>
-      <h1 class="fin-score" aria-label="${r.c} right, ${r.w} wrong"><span class="g">${r.c}</span><i>:</i><span class="b">${r.w}</span></h1>
+      <h1 class="fin-score" aria-label="${r.c} right, ${r.w} wrong"><span class="g" data-count="${r.c}">${r.c}</span><i>:</i><span class="b" data-count="${r.w}">${r.w}</span></h1>
       <dl class="stats">
         <div><dt>Accuracy</dt><dd>${tot ? pct(r.c / tot) : 0}<small>%</small></dd></div>
         <div><dt>Best run</dt><dd>${r.best}</dd></div>
@@ -443,7 +443,7 @@ function paintRail() {
   const off = !aiOK();
   ['#rail-claude', '#top-claude'].forEach(sel => { const el = $(sel); if (el) el.disabled = S.ready && off; });
 }
-function render() {
+function render(anim) {
   const r = UI.route, v = $('#view');
   $$('[data-nav]').forEach(a => { if (a.dataset.nav === r) a.setAttribute('aria-current', 'page'); else a.removeAttribute('aria-current'); });
   $('#app').classList.toggle('focus', r === 'study' && !!UI.sess);
@@ -454,6 +454,7 @@ function render() {
   paintSubs(); paintRail(); paintSync();
   if (r === 'library' && UI.lib.mode === 'build') paintBuild();
   if (r === 'library' && UI.lib.mode === 'new') paintNewDeck();
+  if (anim) playEnter(v);
 }
 function softRender() {
   const ae = document.activeElement;
