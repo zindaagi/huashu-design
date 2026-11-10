@@ -1,14 +1,18 @@
 /* ---------- screens ---------- */
-const NAV = [['home', 'Home', 'home'], ['study', 'Study', 'bolt'], ['learn', 'Learn', 'book'], ['library', 'Library', 'stack'], ['prefs', 'Tune', 'tune']];
+const NAV = [['home', 'Home', 'home'], ['study', 'Study', 'play'], ['learn', 'Learn', 'book'], ['library', 'Library', 'stack'], ['prefs', 'Tune', 'tune']];
 const PRESETS = {
-  ember: ['#f0476a', '#6b4bff', 'Ember'], rime: ['#8fd8ff', '#5b6cff', 'Rime'], aurora: ['#35e0a8', '#2a8cff', 'Aurora'],
-  dusk: ['#ffb067', '#ff4d8d', 'Dusk'], lichen: ['#cde87a', '#2f9f7c', 'Lichen'], bone: ['#dfe6ee', '#8fa0b5', 'Bone']
+  storm: ['#7a6bff', '#31c4ff', 'Storm'], volt: ['#ffe04a', '#ff9a1f', 'Volt'], ember: ['#f0476a', '#6b4bff', 'Ember'],
+  aurora: ['#35e0a8', '#2a8cff', 'Aurora'], dusk: ['#ffb067', '#ff4d8d', 'Dusk'], bone: ['#dfe6ee', '#8fa0b5', 'Bone']
 };
+const SUB_COLORS = ['#f6c61e', '#ff8f8f', '#8a1c33', '#e3262e', '#2f7bf5', '#1fb565', '#ff8a1f', '#8b5cf6', '#14b8c4', '#e84fa3', '#94a3b8'];
 const UI = { route: 'home', sess: null, done: null, setup: null, lib: { mode: 'list', did: null, q: '' }, nd: null, build: null, learn: null, sheet: null, planBusy: null };
 const cardErr = {};
 
 const chip = (label, on, act, extra) => '<button class="chip" aria-pressed="' + (on ? 'true' : 'false') + '" data-act="' + act + '" ' + (extra || '') + '><span>' + label + '</span></button>';
 const fmtDay = k => { const [y, m, d] = k.split('-').map(Number); return new Date(y, m - 1, d).toLocaleDateString(undefined, { month: 'short', day: 'numeric' }); };
+const subName = id => id === '_' ? 'Unsorted' : S.subs[id] ? S.subs[id].name : 'All subjects';
+// decks in view: the current subject's, or every deck on the "All" tab
+const scopeIds = () => deckIds(curSub() || undefined);
 
 function ensureCards(did) {
   if (!did || S.cards[did] || !S.decks[did] || cardErr[did]) return;
@@ -23,20 +27,41 @@ function notices() {
   return out.map(t => '<div class="banner">' + ic('warn') + '<span>' + t + '</span></div>').join('');
 }
 function needDeck(title, text) {
-  return `<div class="page-h"><div><p class="lbl">${title}</p><h1>No deck yet</h1></div></div>
+  const sub = curSub();
+  return `<div class="page-h"><div><p class="lbl">${title}${sub ? ' · ' + esc(subName(sub)) : ''}</p><h1>No deck yet</h1></div></div>
   <div class="card sec"><p class="note">${text}</p><div class="chips"><button class="btn pri" data-act="new-deck">${ic('plus')}New deck</button><button class="btn" data-act="sample">Try the sample deck</button></div></div>`;
+}
+
+/* ----- subject tabs ----- */
+function subTabsHTML() {
+  const cur = curSub(), flat = S.profile.prefs.flat, subs = subIds();
+  const tab = (id, name, c) => `<button class="stab${(id || null) === cur ? ' on' : ''}" data-act="sub" data-id="${id}" aria-pressed="${(id || null) === cur}" ${c ? 'style="' + subStyle(c, flat) + '"' : ''}>${c ? '<i></i>' : ''}<span>${esc(name)}</span></button>`;
+  let h = tab('', 'All', '');
+  for (const id of subs) h += tab(id, S.subs[id].name, S.subs[id].c);
+  if (subs.length && deckIds('_').length) h += tab('_', 'Unsorted', '');
+  return h + `<button class="stab add" data-act="sub-add" aria-label="Add a subject">${ic('plus')}${subs.length ? '' : '<span>Add a subject</span>'}</button>`;
+}
+function paintSubs() {
+  const h = subTabsHTML();
+  ['#subs-top', '#subs-bar'].forEach(sel => {
+    const el = $(sel);
+    if (!el || el._h === h) return;
+    el.innerHTML = h; el._h = h;
+    const on = $('.stab.on', el);
+    if (on && el.scrollWidth > el.clientWidth) el.scrollLeft = Math.max(0, on.offsetLeft - el.clientWidth / 2 + on.offsetWidth / 2);
+  });
 }
 
 /* ----- home ----- */
 function viewWelcome() {
   return `${notices()}<div class="home">
   <section class="hero">
-    <canvas class="hero-art" data-crystal="welcome" data-g="1"></canvas>
+    <canvas class="hero-art" data-bolt="welcome" data-g="1"></canvas>
     <div class="hero-in">
-      <p class="lbl">An empty library</p>
-      <h1 class="hero-name">Drop in your notes. Start answering.</h1>
-      <p class="hero-sub">Paste a page of notes or a table. Claude writes the questions and the first ones are ready in under a minute.</p>
-      <div class="hero-cta"><button class="btn go lg" data-act="new-deck">${ic('plus')}New deck</button><button class="btn lg" data-act="sample">Try the sample deck</button></div>
+      <p class="lbl">Nothing here yet</p>
+      <h1 class="hero-name">Add a subject. Drop in your notes.</h1>
+      <p class="hero-sub">Each subject gets its own colour and its own decks. Paste notes or a table into a deck and Claude writes the questions; the first ones are ready in under a minute.</p>
+      <div class="hero-cta"><button class="btn go lg" data-act="sub-add">${ic('plus')}Add a subject</button><button class="btn lg" data-act="new-deck">New deck</button><button class="btn lg" data-act="sample">Try the sample deck</button></div>
     </div>
   </section>
   <div class="how">
@@ -51,12 +76,12 @@ function goalCard() {
   const t = today(), goal = S.profile.goal || 30, p = clamp(t.n / goal, 0, 1), C = 2 * Math.PI * 30, lv = level(), ds = dayStreak();
   return `<section class="card goal" aria-label="Today">
     <div class="ring"><svg viewBox="0 0 76 76" aria-hidden="true"><circle class="r0" cx="38" cy="38" r="30"></circle><circle class="r1" cx="38" cy="38" r="30" stroke-dasharray="${C.toFixed(1)}" stroke-dashoffset="${(C * (1 - p)).toFixed(1)}"></circle></svg><b>${t.n}</b></div>
-    <div style="min-width:0"><p class="lbl">Today</p><p class="big">${t.n >= goal ? 'Goal met' : (goal - t.n) + ' to go'} <small>of ${goal}</small></p><p class="lbl">${ds ? plural(ds, 'day') + ' streak' : 'No streak yet'} · best ${bestStreak()}</p></div>
+    <div style="min-width:0"><p class="lbl">Today, all subjects</p><p class="big">${t.n >= goal ? 'Goal met' : (goal - t.n) + ' to go'} <small>of ${goal}</small></p><p class="lbl">${ds ? plural(ds, 'day') + ' streak' : 'No streak yet'} · best ${bestStreak()}</p></div>
     <div class="goal-lvl"><span class="lbl">Level ${lv.lv}</span><div class="meter"><i style="width:${pct(lv.p)}%"></i></div><span class="num mute" style="font-size:11px">${lv.xp - lv.lo}/${lv.hi - lv.lo} XP</span></div>
   </section>`;
 }
-function sessionsCard() {
-  const ss = S.profile.sessions.slice(0, 5);
+function sessionsCard(sub) {
+  const ss = S.profile.sessions.filter(s => !sub || (S.decks[s.did] && subOf(S.decks[s.did]) === sub)).slice(0, 5);
   return `<section class="card sec"><div class="sec-h"><h2>Last sessions</h2></div>${ss.length
     ? '<div class="rows">' + ss.map(s => `<div class="row"><span class="row-t">${esc(s.name)}</span><span class="row-s">${s.mode === 'quiz' ? 'Quiz' : 'Endless'} · ${ago(s.t)}</span><span class="row-r"><span class="score" title="Right : wrong"><span class="g">${s.c | 0}</span><i>:</i><span class="b">${s.w | 0}</span></span></span></div>`).join('') + '</div>'
     : '<p class="note">Finished sessions land here, right answers against wrong.</p>'}</section>`;
@@ -74,19 +99,59 @@ function topicRows(list, drill) {
   return list.map(t => `<div class="topic"><span class="topic-n">${esc(t.topic)}</span><span class="num">${t.acc == null ? '—' : pct(t.acc) + '%'}</span>${drill
     ? `<button class="btn sm" data-act="drill" data-topic="${esc(t.topic)}">Drill</button>` : `<span class="lbl">${t.n} q</span>`}<div class="meter"><i style="width:${pct(t.m)}%"></i></div></div>`).join('');
 }
+function subTotals(id) {
+  const ids = deckIds(id);
+  let total = 0, due = 0, sum = 0;
+  for (const d of ids) { const st = deckStats(d); total += st.total; due += st.due; sum += st.mastery * st.total; }
+  return { decks: ids.length, total, due, m: total ? sum / total : 0 };
+}
+function viewOverview() {
+  const flat = S.profile.prefs.flat, subs = subIds();
+  const card = (id, name, c) => {
+    const t = subTotals(id);
+    return `<button class="subcard${c ? '' : ' plain'}" data-act="sub" data-id="${id}" ${c ? 'style="' + subStyle(c, flat) + '"' : ''}>
+      <canvas data-bolt="sub-${id}" data-g="${t.m.toFixed(3)}"></canvas>
+      <span class="lbl">${plural(t.decks, 'deck')} · ${t.total} q</span><b>${esc(name)}</b>
+      <span class="subcard-s"><span><em>${t.due}</em> due</span><span><em>${pct(t.m)}%</em> charged</span></span></button>`;
+  };
+  return `${notices()}<div class="home">
+  <section class="sec over">
+    <div class="page-h"><div><p class="lbl">All subjects</p><h1>Pick a subject</h1></div><button class="btn" data-act="sub-add">${ic('plus')}Add a subject</button></div>
+    <div class="subgrid">${subs.map(id => card(id, S.subs[id].name, S.subs[id].c)).join('')}${deckIds('_').length ? card('_', 'Unsorted', '') : ''}</div>
+  </section>
+  <aside class="side">${goalCard()}${sessionsCard()}${activityCard()}</aside>
+  </div>`;
+}
 function viewHome() {
-  const ids = deckIds();
-  if (!ids.length) return viewWelcome();
-  const did = activeDeck(), d = S.decks[did], st = deckStats(did);
+  const sub = curSub(), subs = subIds();
+  if (!sub && subs.length) return viewOverview();
+  const ids = deckIds(sub || undefined);
+  if (!ids.length && !subs.length) return viewWelcome();
+  const head = sub ? esc(subName(sub)) : 'All decks';
+  if (!ids.length) {
+    return `${notices()}<div class="home">
+    <section class="hero">
+      <canvas class="hero-art" data-bolt="sub-${sub}" data-g="0"></canvas>
+      <div class="hero-in">
+        <p class="lbl">No decks yet</p>
+        <h1 class="hero-name">${head}</h1>
+        <p class="hero-sub">Decks you make here stay in this subject. Paste notes or a table and Claude writes the questions.</p>
+        <div class="hero-cta"><button class="btn go lg" data-act="new-deck">${ic('plus')}New deck</button><button class="btn lg" data-act="sample">Try the sample deck</button>${S.subs[sub] ? `<button class="btn lg" data-act="sub-edit" data-id="${sub}">Edit subject</button>` : ''}</div>
+      </div>
+    </section>
+    <aside class="side">${goalCard()}${activityCard()}</aside>
+    </div>`;
+  }
+  const did = activeDeck(sub), d = S.decks[did], st = deckStats(did);
   ensureCards(did);
   const cta = st.due ? 'Continue · ' + st.due + ' due' : st.fresh ? 'Continue · ' + st.fresh + ' new' : 'Keep sharp';
   const weak = weakTopics(did), strong = strongTopics(did);
   return `${notices()}<div class="home">
   <section class="hero" aria-label="Active deck">
-    <canvas class="hero-art" data-crystal="${did}" data-g="${st.mastery.toFixed(3)}"></canvas>
+    <canvas class="hero-art" data-bolt="${did}" data-g="${st.mastery.toFixed(3)}"></canvas>
     <div class="hero-ghost" aria-hidden="true">${pct(st.mastery)}<i>%</i></div>
     <div class="hero-in">
-      <p class="lbl">${plural(st.total, 'question')} · ${pct(st.mastery)}% crystallised</p>
+      <p class="lbl">${head} · ${plural(st.total, 'question')} · ${pct(st.mastery)}% charged</p>
       <h1 class="hero-name">${esc(d.name)}</h1>
       <dl class="stats">
         <div><dt>Recall</dt><dd>${st.acc == null ? '—' : pct(st.acc) + '<small>%</small>'}</dd></div>
@@ -101,13 +166,13 @@ function viewHome() {
       </div>
     </div>
   </section>
-  <aside class="side">${goalCard()}${sessionsCard()}${activityCard()}</aside>
+  <aside class="side">${goalCard()}${sessionsCard(sub)}${activityCard()}</aside>
   <div class="duo">
     <section class="card sec"><div class="sec-h"><h2>Weak spots</h2><span class="lbl">Recall</span></div>${weak.length ? '<div>' + topicRows(weak, true) + '</div>' : '<p class="note">Nothing weak yet. Answer a few questions and the topics that trip you up surface here.</p>'}</section>
     <section class="card sec"><div class="sec-h"><h2>Strengths</h2><span class="lbl">Recall</span></div>${strong.length ? '<div>' + topicRows(strong, false) + '</div>' : '<p class="note">Topics you answer reliably collect here and get asked less often.</p>'}</section>
   </div>
-  <section class="sec decks"><div class="sec-h"><h2>Decks</h2><a class="link" href="#library">Manage</a></div>
-    <div class="deckgrid">${ids.map(id => { const s = deckStats(id); return `<button class="deck${id === did ? ' on' : ''}" data-act="set-active" data-did="${id}" aria-pressed="${id === did}"><canvas data-crystal="${id}" data-g="${s.mastery.toFixed(3)}"></canvas><b>${esc(S.decks[id].name)}</b><span class="lbl">${s.total} q · ${pct(s.mastery)}%</span><div class="meter"><i style="width:${pct(s.mastery)}%"></i></div></button>`; }).join('')}
+  <section class="sec decks"><div class="sec-h"><h2>${sub ? head + ' decks' : 'Decks'}</h2><span class="chips">${S.subs[sub] ? `<button class="link" data-act="sub-edit" data-id="${sub}">Edit subject</button>` : ''}<a class="link" href="#library">Manage</a></span></div>
+    <div class="deckgrid">${ids.map(id => { const s = deckStats(id); return `<button class="deck${id === did ? ' on' : ''}" data-act="set-active" data-did="${id}" aria-pressed="${id === did}"><canvas data-bolt="${id}" data-g="${s.mastery.toFixed(3)}"></canvas><b>${esc(S.decks[id].name)}</b><span class="lbl">${s.total} q · ${pct(s.mastery)}%</span><div class="meter"><i style="width:${pct(s.mastery)}%"></i></div></button>`; }).join('')}
     <button class="deck add" data-act="new-deck">${ic('plus')}<span class="lbl">New deck</span></button></div>
   </section>
   </div>`;
@@ -121,10 +186,10 @@ function setupPool(su) {
   return su.topics.length ? cards.filter(c => su.topics.includes(c.topic || 'General')) : cards;
 }
 function viewSetup() {
-  const ids = deckIds();
+  const ids = scopeIds();
   if (!ids.length) return needDeck('Study', 'Sessions draw on a deck. Make one from your notes, or try the sample.');
   const su = UI.setup || (UI.setup = { did: activeDeck(), topics: [] });
-  if (!S.decks[su.did]) { su.did = activeDeck(); su.topics = []; }
+  if (!ids.includes(su.did)) { su.did = activeDeck(); su.topics = []; }
   const cfg = S.profile.study, did = su.did, d = S.decks[did];
   ensureCards(did);
   const topics = S.cards[did] ? topicList(did) : [];
@@ -133,8 +198,8 @@ function viewSetup() {
   let due = 0, fresh = 0;
   if (pool) for (const c of pool) { const p = prog[c.id]; if (!p || !p[P.SEEN]) fresh++; else if (p[P.DUE] <= t) due++; }
   const focusNote = { adaptive: 'Due and shaky questions first, new ones fed in steadily, strong ones only when they are about to fade.', weak: 'Only what you get wrong or have not learned yet. Hard, and fast progress.', strong: 'A lap through what you already know, to keep it fast and certain.' }[cfg.focus];
-  const canTop = aiOK() && (d.srcs || []).length > 0;
-  return `<div class="page-h"><div><p class="lbl">Study</p><h1>Set up a session</h1></div></div>
+  const canTop = aiOK() && (d.srcs || []).length > 0, sub = curSub();
+  return `<div class="page-h"><div><p class="lbl">Study${sub ? ' · ' + esc(subName(sub)) : ''}</p><h1>Set up a session</h1></div></div>
   <div class="setup">
     ${ids.length > 1 ? `<div class="sec"><span class="lbl">Deck</span><div class="chips">${ids.map(id => chip(esc(S.decks[id].name), id === did, 'st-deck', 'data-did="' + id + '"')).join('')}</div></div>` : ''}
     <div class="sec"><span class="lbl">Length</span><div class="chips">${chip('Endless', cfg.mode === 'endless', 'st-mode', 'data-mode="endless"')}${[10, 20, 40].map(n => chip('Quiz · ' + n, cfg.mode === 'quiz' && cfg.len === n, 'st-mode', 'data-mode="quiz" data-len="' + n + '"')).join('')}</div></div>
@@ -204,7 +269,7 @@ function viewDone() {
   const r = UI.done, tot = r.c + r.w;
   return `<div class="fin">
     <section class="fin-top">
-      <canvas class="fin-art" data-crystal="${r.did}" data-g="${r.after.toFixed(3)}" data-from="${r.before.toFixed(3)}"></canvas>
+      <canvas class="fin-art" data-bolt="${r.did}" data-g="${r.after.toFixed(3)}" data-from="${r.before.toFixed(3)}"></canvas>
       <p class="lbl">Session complete · ${esc(r.name)}</p>
       <h1 class="fin-score" aria-label="${r.c} right, ${r.w} wrong"><span class="g">${r.c}</span><i>:</i><span class="b">${r.w}</span></h1>
       <dl class="stats">
@@ -213,7 +278,7 @@ function viewDone() {
         <div><dt>XP</dt><dd>+${r.xp}</dd></div>
         <div><dt>Time</dt><dd style="font-size:20px;padding-top:6px">${dur(r.ms)}</dd></div>
       </dl>
-      <p class="note">Deck crystallised from ${pct(r.before)}% to <b>${pct(r.after)}%</b>.</p>
+      <p class="note">Deck charged from ${pct(r.before)}% to <b>${pct(r.after)}%</b>.</p>
       <div class="chips">
         <button class="btn pri lg" data-act="again">${ic('bolt')}Go again</button>
         ${r.misses.length ? '<button class="btn lg" data-act="drill-misses">Drill the misses</button>' : ''}
@@ -227,11 +292,11 @@ function viewDone() {
 
 /* ----- learn ----- */
 function viewLearn() {
-  const ids = deckIds();
+  const ids = scopeIds();
   if (!ids.length) return needDeck('Learn', 'Mr Claude teaches from your own notes. Add a deck first, with a syllabus if you have one.');
-  const did = UI.learn && S.decks[UI.learn] ? UI.learn : (UI.learn = activeDeck()), d = S.decks[did], plan = d.plan || [];
-  const busy = UI.planBusy === did;
-  return `<div class="page-h"><div><p class="lbl">Learn with Mr Claude</p><h1>${esc(d.name)}</h1></div></div>
+  const did = UI.learn && ids.includes(UI.learn) ? UI.learn : (UI.learn = activeDeck()), d = S.decks[did], plan = d.plan || [];
+  const busy = UI.planBusy === did, sub = curSub();
+  return `<div class="page-h"><div><p class="lbl">Learn with Mr Claude${sub ? ' · ' + esc(subName(sub)) : ''}</p><h1>${esc(d.name)}</h1></div></div>
   ${ids.length > 1 ? `<div class="chips">${ids.map(id => chip(esc(S.decks[id].name), id === did, 'ln-deck', 'data-did="' + id + '"')).join('')}</div>` : ''}
   ${aiOK() ? '' : `<div class="banner">${ic('warn')}<span>Mr Claude is not available in this view, so lessons cannot run here. Open the page inside Claude and allow it to use Claude.</span></div>`}
   <section class="card sec"><div class="sec-h"><h2>Syllabus</h2><button class="btn sm" data-act="syl-edit">${d.syl ? 'Edit' : 'Add syllabus'}</button></div>
@@ -248,15 +313,15 @@ function viewLearn() {
 /* ----- library ----- */
 function viewLibrary() {
   const L = UI.lib;
-  if (L.mode === 'new') return viewNewDeck();
+  if (L.mode === 'new' && UI.nd) return viewNewDeck();
   if (L.mode === 'build' && UI.build && !UI.build.quiet && UI.build.did === L.did) return viewBuild();
   if (L.mode === 'build') L.mode = S.decks[L.did] ? 'deck' : 'list';
   if (L.mode === 'deck' && S.decks[L.did]) return viewDeck(L.did);
   L.mode = 'list';
-  const ids = deckIds();
-  return `<div class="page-h"><div><p class="lbl">Library</p><h1>Your decks</h1></div><button class="btn pri" data-act="new-deck">${ic('plus')}New deck</button></div>
-  ${ids.length ? `<div class="deckgrid">${ids.map(id => { const s = deckStats(id), d = S.decks[id]; return `<button class="deck" data-act="lib-open" data-did="${id}"><canvas data-crystal="${id}" data-g="${s.mastery.toFixed(3)}"></canvas><b>${esc(d.name)}</b><span class="lbl">${s.total} q · ${plural((d.srcs || []).length, 'source')}</span><div class="meter"><i style="width:${pct(s.mastery)}%"></i></div></button>`; }).join('')}</div>`
-    : `<div class="card sec"><p class="note">A deck holds your material and the questions written from it. Start with a page of notes or a table.</p><div><button class="btn" data-act="sample">Try the sample deck</button></div></div>`}`;
+  const sub = curSub(), ids = scopeIds();
+  return `<div class="page-h"><div><p class="lbl">Library</p><h1>${sub ? esc(subName(sub)) + ' decks' : 'All decks'}</h1></div><button class="btn pri" data-act="new-deck">${ic('plus')}New deck</button></div>
+  ${ids.length ? `<div class="deckgrid">${ids.map(id => { const s = deckStats(id), d = S.decks[id], sj = S.subs[d.sub]; return `<button class="deck" data-act="lib-open" data-did="${id}"><canvas data-bolt="${id}" data-g="${s.mastery.toFixed(3)}"></canvas><b>${esc(d.name)}</b><span class="lbl">${!sub && sj ? esc(sj.name) + ' · ' : ''}${s.total} q · ${plural((d.srcs || []).length, 'source')}</span><div class="meter"><i style="width:${pct(s.mastery)}%"></i></div></button>`; }).join('')}</div>`
+    : `<div class="card sec"><p class="note">${sub ? 'No decks in this subject yet. ' : ''}A deck holds your material and the questions written from it. Start with a page of notes or a table.</p><div><button class="btn" data-act="sample">Try the sample deck</button></div></div>`}`;
 }
 function cardRows(did, list) {
   const prog = S.prog[did] || {};
@@ -268,13 +333,19 @@ function filterCards(did) {
   const q = norm(UI.lib.q || ''), cards = S.cards[did] || [];
   return q ? cards.filter(c => norm(c.q + ' ' + c.a + ' ' + (c.topic || '')).includes(q)) : cards;
 }
+function subChips(cur, act) {
+  const flat = S.profile.prefs.flat;
+  return subIds().map(id => `<button class="chip sub" aria-pressed="${id === cur}" data-act="${act}" data-id="${id}" style="${subStyle(S.subs[id].c, flat)}"><i></i><span>${esc(S.subs[id].name)}</span></button>`).join('') +
+    chip('No subject', !cur || !S.subs[cur], act, 'data-id=""');
+}
 function viewDeck(did) {
   const d = S.decks[did], st = deckStats(did), srcs = d.srcs || [];
   ensureCards(did);
   return `<div><button class="link" data-act="lib-back">← All decks</button></div>
-  <div class="page-h"><div class="grow"><p class="lbl">Deck${d.sample ? ' · sample' : ''}</p><h1>${esc(d.name)}</h1></div>
+  <div class="page-h"><div class="grow"><p class="lbl">Deck${S.subs[d.sub] ? ' · ' + esc(S.subs[d.sub].name) : ''}${d.sample ? ' · sample' : ''}</p><h1>${esc(d.name)}</h1></div>
     <div class="chips"><button class="btn pri" data-act="deck-study" ${st.total ? '' : 'disabled'}>${ic('bolt')}Study</button><button class="btn" data-act="deck-rename">Rename</button></div></div>
   <dl class="stats card"><div><dt>Questions</dt><dd>${st.total}</dd></div><div><dt>Mastered</dt><dd>${st.mast}</dd></div><div><dt>Due</dt><dd>${st.due}</dd></div><div><dt>Recall</dt><dd>${st.acc == null ? '—' : pct(st.acc) + '<small>%</small>'}</dd></div></dl>
+  ${subIds().length ? `<section class="card sec"><div class="sec-h"><h2>Subject</h2></div><div class="chips">${subChips(d.sub, 'deck-move')}</div></section>` : ''}
   <section class="card sec"><div class="sec-h"><h2>Material</h2><button class="btn sm" data-act="src-add">${ic('plus')}Add material</button></div>
     ${srcs.length ? `<div class="list">${srcs.map(s => `<div class="item"><span class="item-q">${esc(s.name)}</span><span class="item-a">${Number(s.chars).toLocaleString()} characters</span><span class="item-r"><button class="btn sm ghost" data-act="src-rm" data-id="${s.id}" aria-label="Remove source">${ic('trash')}</button></span></div>`).join('')}</div>` : '<p class="note">No source text on file. Add notes so Claude can write more questions and teach from them.</p>'}
     <p class="note">${d.syl ? 'Syllabus on file.' : 'No syllabus yet.'} <button class="link" data-act="syl-edit">${d.syl ? 'Edit syllabus' : 'Add a syllabus'}</button></p>
@@ -291,7 +362,8 @@ function viewNewDeck() {
   return `<div><button class="link" data-act="lib-back">← All decks</button></div>
   <div class="page-h"><div><p class="lbl">New deck</p><h1>Bring your material</h1></div></div>
   <div class="setup">
-    <label class="field"><span class="lbl">Deck name</span><input class="inp" id="nd-name" maxlength="60" placeholder="Cell biology, unit 2" value="${esc(nd.name || '')}"></label>
+    <div class="sec" id="nd-sub"></div>
+    <label class="field"><span class="lbl">Deck name</span><input class="inp" id="nd-name" maxlength="60" placeholder="Module 5, projectile motion" value="${esc(nd.name || '')}"></label>
     <div class="field drop" id="nd-drop"><label class="lbl" for="nd-text">Notes, tables, anything</label>
       <textarea class="ta" id="nd-text" placeholder="Paste notes or a table. Rows like  term [tab] definition  become cards instantly.">${esc(nd.text || '')}</textarea>
       <div class="chips" style="align-items:center"><button class="btn sm" data-act="nd-file">${ic('file')}Add files</button><span class="note">PDF, Word, text, CSV${AI.images ? ', photos of notes' : ''}. Or drop them here.</span></div>
@@ -300,7 +372,7 @@ function viewNewDeck() {
     </div>
     <div id="nd-detect"></div>
     <div class="field"><label class="lbl" for="nd-syl">Syllabus, optional</label>
-      <textarea class="ta" id="nd-syl" style="min-height:76px" placeholder="Paste the syllabus or learning outcomes. Questions and lessons will follow it.">${esc(nd.syl || '')}</textarea>
+      <textarea class="ta" id="nd-syl" style="min-height:76px" placeholder="Paste the syllabus dot points or learning outcomes. Questions and lessons will follow them.">${esc(nd.syl || '')}</textarea>
       <div><button class="btn sm" data-act="nd-sylfile">${ic('file')}Upload a syllabus file</button><input type="file" id="nd-sylfile" hidden accept="${FILE_ACCEPT}"></div>
     </div>
     <div class="sec" id="nd-count"></div>
@@ -311,7 +383,7 @@ function viewBuild() {
   const b = UI.build, d = S.decks[b.did];
   return `<div class="build">
     <p class="lbl">${esc(d ? d.name : '')}</p>
-    <canvas id="build-art" data-crystal="${b.did}" data-g="${clamp(b.got / Math.max(1, b.target), 0, 1).toFixed(3)}"></canvas>
+    <canvas id="build-art" data-bolt="${b.did}" data-g="${clamp(b.got / Math.max(1, b.target), 0, 1).toFixed(3)}"></canvas>
     <div class="build-n" id="build-n"></div>
     <p class="lbl" id="build-msg"></p>
     <div class="build-log" id="build-log"></div>
@@ -321,25 +393,30 @@ function viewBuild() {
 
 /* ----- tune ----- */
 function viewPrefs() {
-  const p = S.profile.prefs, goal = S.profile.goal || 30;
-  const syncLine = S.mode === 'cloud' ? 'Signed in. Decks, progress and settings follow your Claude account onto any device where you open this page.'
+  const p = S.profile.prefs, goal = S.profile.goal || 30, flat = p.flat, subs = subIds();
+  const syncLine = S.mode === 'cloud' ? 'Signed in. Subjects, decks, progress and settings follow your Claude account onto any device where you open this page.'
     : S.mode === 'local' ? 'Not connected to an account here. Everything is kept in this browser only.' : 'Connecting.';
   return `<div class="page-h"><div><p class="lbl">Tune</p><h1>Make it yours</h1></div></div>
   ${notices()}
   <div class="prefs">
-    <section class="pref"><h3>Colour</h3>
-      <div class="preview" id="pf-preview">${PRESETS[p.preset] ? PRESETS[p.preset][2] : 'Custom'}</div>
-      <div class="swatches">${Object.keys(PRESETS).map(k => `<button class="sw" data-act="pf-preset" data-k="${k}" aria-pressed="${p.preset === k}"><i style="background:linear-gradient(135deg,${PRESETS[k][0]},${p.flat ? PRESETS[k][0] : PRESETS[k][1]})"></i>${PRESETS[k][2]}</button>`).join('')}</div>
+    <section class="pref"><h3>Subjects</h3>
+      ${subs.length ? `<div class="list">${subs.map(id => { const s = S.subs[id]; return `<div class="item"><span class="item-q sj-row" style="${subStyle(s.c, flat)}"><i></i>${esc(s.name)}</span><span class="item-a">${plural(deckIds(id).length, 'deck')}</span><span class="item-r"><button class="btn sm" data-act="sub-edit" data-id="${id}">${ic('edit')}Edit</button></span></div>`; }).join('')}</div>` : '<p class="note">No subjects yet. Each one gets its own tab, colour and decks.</p>'}
+      <div><button class="btn sm" data-act="sub-add">${ic('plus')}Add a subject</button></div>
+    </section>
+    <section class="pref"><h3>Base colour</h3>
+      <p class="note">Each subject wears its own colour. This one is used on the All tab and for unsorted decks.</p>
+      <div class="swatches">${Object.keys(PRESETS).map(k => `<button class="sw" data-act="pf-preset" data-k="${k}" aria-pressed="${p.preset === k}"><i style="background:linear-gradient(135deg,${PRESETS[k][0]},${flat ? PRESETS[k][0] : PRESETS[k][1]})"></i>${PRESETS[k][2]}</button>`).join('')}</div>
       <div class="chips" style="align-items:center">
         <label class="color"><input type="color" id="pf-a1" value="${esc(p.a1)}">From</label>
-        <label class="color" ${p.flat ? 'hidden' : ''}><input type="color" id="pf-a2" value="${esc(p.a2)}">To</label>
-        ${chip('Gradient', !p.flat, 'pf-flat', 'data-v="0"')}${chip('Flat colour', p.flat, 'pf-flat', 'data-v="1"')}
+        <label class="color" ${flat ? 'hidden' : ''}><input type="color" id="pf-a2" value="${esc(p.a2)}">To</label>
+        ${chip('Gradient', !flat, 'pf-flat', 'data-v="0"')}${chip('Flat colour', flat, 'pf-flat', 'data-v="1"')}
       </div>
+      <p class="note">Gradient or flat applies everywhere, subjects included.</p>
     </section>
     <section class="pref"><h3>Light</h3><div class="chips">${chip('Match Claude', p.look === 'auto', 'pf-look', 'data-v="auto"')}${chip('Dark', p.look === 'dark', 'pf-look', 'data-v="dark"')}${chip('Light', p.look === 'light', 'pf-look', 'data-v="light"')}</div></section>
     <section class="pref"><h3>Rewards</h3>
       <div class="chips">${chip('Animation', p.motion, 'pf-toggle', 'data-k="motion"')}${chip('Sound', p.sound, 'pf-toggle', 'data-k="sound"')}${chip('Vibration', p.haptic, 'pf-toggle', 'data-k="haptic"')}</div>
-      <p class="note">A right answer blooms into a crystal, with an optional glass chime. Turn animation off for a still screen.</p></section>
+      <p class="note">A right answer discharges in a burst of lightning, with an optional zap. Turn animation off for a still screen.</p></section>
     <section class="pref"><h3>Daily goal</h3><div class="chips">${[10, 20, 30, 50, 100].map(n => chip(n + ' answers', goal === n, 'pf-goal', 'data-n="' + n + '"')).join('')}</div></section>
     <section class="pref"><h3>Marking typed answers</h3>
       <div class="chips">${chip('Strict', p.typo === 'strict', 'pf-typo', 'data-v="strict"')}${chip('Balanced', p.typo === 'balanced', 'pf-typo', 'data-v="balanced"')}${chip('Generous', p.typo === 'generous', 'pf-typo', 'data-v="generous"')}</div>
@@ -360,11 +437,9 @@ function paintSync() {
 function paintRail() {
   const lv = level(), rank = $('#rank');
   if (rank) {
-    rank.innerHTML = `<canvas data-crystal="rank-${S.uid || 'local'}" data-g="${clamp(0.12 + lv.lv / 24, 0, 1).toFixed(3)}"></canvas><div style="min-width:0"><b>Level ${lv.lv}</b><div class="meter"><i style="width:${pct(lv.p)}%"></i></div><span class="num">${lv.xp - lv.lo}/${lv.hi - lv.lo} XP</span></div>`;
-    drawCrystals(rank);
+    rank.innerHTML = `<canvas data-bolt="rank-${S.uid || 'local'}" data-g="${clamp(0.12 + lv.lv / 24, 0, 1).toFixed(3)}"></canvas><div style="min-width:0"><b>Level ${lv.lv}</b><div class="meter"><i style="width:${pct(lv.p)}%"></i></div><span class="num">${lv.xp - lv.lo}/${lv.hi - lv.lo} XP</span></div>`;
+    drawBolts(rank);
   }
-  const ts = $('#top-streak');
-  if (ts) ts.innerHTML = ic('spark') + '<b>' + dayStreak() + '</b>';
   const off = !aiOK();
   ['#rail-claude', '#top-claude'].forEach(sel => { const el = $(sel); if (el) el.disabled = S.ready && off; });
 }
@@ -375,8 +450,8 @@ function render() {
   if (!S.ready) return;
   const views = { home: viewHome, study: viewStudy, learn: viewLearn, library: viewLibrary, prefs: viewPrefs };
   v.innerHTML = (views[r] || viewHome)();
-  drawCrystals(v);
-  paintRail(); paintSync();
+  drawBolts(v);
+  paintSubs(); paintRail(); paintSync();
   if (r === 'library' && UI.lib.mode === 'build') paintBuild();
   if (r === 'library' && UI.lib.mode === 'new') paintNewDeck();
 }

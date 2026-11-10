@@ -8,24 +8,79 @@ function toast(msg, ms) {
 }
 let lookSig = '';
 function applyLook(force) {
-  const p = S.profile.prefs, r = document.documentElement;
-  const sig = [p.look, p.a1, p.a2, p.flat, p.motion, r.getAttribute('data-theme'), window.matchMedia && window.matchMedia('(prefers-color-scheme: dark)').matches].join('|');
+  const p = S.profile.prefs, r = document.documentElement, sj = S.subs[curSub()], c = sj && okHex(sj.c) ? sj.c : '';
+  const sig = [p.look, p.a1, p.a2, p.flat, p.motion, c, r.getAttribute('data-theme'), window.matchMedia && window.matchMedia('(prefers-color-scheme: dark)').matches].join('|');
   if (sig === lookSig && !force) return;
   lookSig = sig;
   r.classList.toggle('look-dark', p.look === 'dark');
   r.classList.toggle('look-light', p.look === 'light');
   r.classList.toggle('calm', !p.motion);
-  const a1 = p.a1, a2 = p.flat ? p.a1 : p.a2;
+  // the subject in view themes everything; the base colour covers the All tab and unsorted decks
+  const a1 = c || p.a1, a2 = p.flat ? a1 : (c ? partner(c) : p.a2), on = onColor(a1, a2);
   r.style.setProperty('--a1', a1);
   r.style.setProperty('--a2', a2);
-  const white = Math.min(contrast('#ffffff', a1), contrast('#ffffff', a2)), dark = Math.min(contrast('#0a0e14', a1), contrast('#0a0e14', a2));
-  const on = white >= 3 || white >= dark ? '#ffffff' : '#0a0e14';
   r.style.setProperty('--on', on);
   r.style.setProperty('--onx', on === '#ffffff' ? '#0a0e14' : '#ffffff');
   r.style.removeProperty('--ink');
   r.style.setProperty('--ink', readable(a1, getComputedStyle(r).getPropertyValue('--bg').trim() || '#0a0e14'));
   try { localStorage.setItem('rime:look', JSON.stringify({ look: p.look, a1: p.a1, a2: p.a2, flat: p.flat, motion: p.motion, preset: p.preset })); } catch (e) {}
-  drawCrystals();
+  drawBolts();
+}
+
+/* ----- subjects ----- */
+function selectSub(id) {
+  const want = id === '_' ? '_' : (S.subs[id] ? id : null);
+  if (UI.route === 'library' && UI.lib.mode === 'new' && UI.nd) {
+    // mid-form: keep what has been typed and just file the new deck under the tapped subject
+    UI.nd.sub = S.subs[want] ? want : '';
+    S.profile.sub = want; Store.touchActive(); applyLook(); paintSubs(); paintNewDeck();
+    return;
+  }
+  S.profile.sub = want;
+  Store.touchActive();
+  UI.setup = null; UI.learn = null;
+  if (UI.route === 'library') UI.lib = { mode: 'list', did: null, q: '' };
+  applyLook();
+  if (UI.route === 'prefs' || (UI.route === 'study' && UI.done && !UI.sess)) { UI.done = null; go('home'); }
+  else { render(); $('#main').scrollTop = 0; }
+}
+// keep the tab and theme on the subject of the deck being opened
+function followDeck(did) {
+  const s = subOf(S.decks[did]), want = s === '_' ? (subIds().length ? '_' : null) : s;
+  if ((S.profile.sub || null) === want) return;
+  S.profile.sub = want;
+  Store.touchActive();
+  applyLook();
+  paintSubs();
+}
+function subjectSheet(id) {
+  const s = id ? S.subs[id] : null;
+  let c = s && okHex(s.c) ? s.c : SUB_COLORS[subIds().length % SUB_COLORS.length];
+  const paint = () => {
+    $('#sj-sw').innerHTML = SUB_COLORS.map(x => `<button class="sw" data-act="sj-color" data-c="${x}" aria-pressed="${x === c}" aria-label="Colour ${x}"><i style="background:${x}"></i></button>`).join('');
+    $('#sj-c').value = c;
+    $('#sj-prev').style.cssText = subStyle(c, S.profile.prefs.flat);
+  };
+  const acts = [];
+  if (s) acts.push({ label: 'Delete', cls: 'danger', fn: () => confirmSheet('Delete ' + s.name + '?', 'The tab goes away. Its ' + plural(deckIds(id).length, 'deck') + ' and all progress are kept and move to Unsorted.', 'Delete subject', async () => { closeSheet(); await Store.deleteSub(id); applyLook(); render(); toast('Subject deleted'); }, true) });
+  acts.push({ label: 'Cancel', cls: 'ghost' }, { label: s ? 'Save' : 'Add subject', cls: 'pri', fn: () => {
+    const name = str($('#sj-name').value, 32);
+    if (!name) { toast('Give the subject a name.'); return false; }
+    closeSheet();
+    if (s) { s.name = name; s.c = c; Store.saveSub(id); applyLook(true); render(); return; }
+    const nid = mkid('j'), order = subIds().reduce((m, x) => Math.max(m, S.subs[x].o || 0), -1) + 1;
+    S.subs[nid] = { k: 'sub', id: nid, name, c, o: order, t: now() };
+    Store.saveSub(nid);
+    selectSub(nid);
+  } });
+  openSheet({
+    title: s ? 'Edit subject' : 'New subject',
+    html: `<div class="sj-prev" id="sj-prev">${ic('bolt')}<b id="sj-prev-name">${esc(s ? s.name : 'New subject')}</b></div>
+      <label class="field"><span class="lbl">Name</span><input class="inp" id="sj-name" maxlength="32" value="${esc(s ? s.name : '')}" placeholder="Chemistry"></label>
+      <div class="field"><span class="lbl">Colour</span><div class="swatches" id="sj-sw"></div><label class="color"><input type="color" id="sj-c">Any other colour</label></div>
+      <p class="note">The subject gets its own tab, and everything inside it takes this colour.</p>`,
+    onOpen: paint, setC(x) { if (okHex(x)) { c = x; paint(); } }, acts
+  });
 }
 
 /* ----- sheets ----- */
@@ -76,7 +131,8 @@ async function startSession(o) {
     n: 0, asked: new Set(), recent: [], again: new Map(), streak: 0, best: 0, right: 0, wrong: 0, close: 0, xp: 0,
     t0: now(), log: [], cur: null, newRun: 0, topups: 0, lastTop: 0, before: deckStats(o.did).mastery
   };
-  if (S.profile.active !== o.did) { S.profile.active = o.did; Store.touchActive(); }
+  setActive(o.did);
+  followDeck(o.did);
   Chat.quiz = null;
   if (Chat.open) closeChat();
   nextQuestion(true);
@@ -324,7 +380,7 @@ function paintBuild() {
   $('#build-msg').textContent = b.status === 'run' ? b.msg : b.status === 'done' ? plural(b.got, 'question') + ' ready' : b.status === 'stopped' ? 'Stopped at ' + b.got : b.msg;
   $('#build-log').innerHTML = b.recent.map(q => '<p>' + esc(q) + '</p>').join('');
   const cv = $('#build-art');
-  if (cv) drawCrystal(cv, b.did, clamp(b.got / Math.max(1, b.target), 0, 1));
+  if (cv) drawBolt(cv, b.did, clamp(b.got / Math.max(1, b.target), 0, 1));
   const run = b.status === 'run';
   $('#build-acts').innerHTML = `<button class="btn pri lg" data-act="build-study" ${b.got >= (run ? 4 : 1) ? '' : 'disabled'}>${ic('bolt')}Start studying</button>` +
     (run ? `<button class="btn lg" data-act="build-stop">${ic('stop')}Stop</button>` : `<button class="btn lg" data-act="build-done">Open deck</button>`);
@@ -334,7 +390,7 @@ function paintBuild() {
 const prettyName = f => { const s = String(f).replace(/\.[a-z0-9]{1,5}$/i, '').replace(/[_-]+/g, ' ').trim(); return (s.charAt(0).toUpperCase() + s.slice(1)).slice(0, 60); };
 const firstLine = t => { const l = String(t).split('\n').map(x => x.replace(/^[#>\-*\s|]+/, '').trim()).find(x => x.length > 2) || ''; return l.split(/[.:;|\t]/)[0].trim().slice(0, 40); };
 function openNewDeck() {
-  UI.nd = { name: '', text: '', syl: '', files: [], count: 30, mode: 'table', touched: false, header: false, headerSet: false, both: false, table: null, busy: 0 };
+  UI.nd = { sub: S.subs[curSub()] ? curSub() : '', name: '', text: '', syl: '', files: [], count: 30, mode: 'table', touched: false, header: false, headerSet: false, both: false, table: null, busy: 0 };
   UI.lib = { mode: 'new', did: null, q: '' };
   go('library');
 }
@@ -348,6 +404,8 @@ function ndTable() {
 function paintNewDeck() {
   const nd = UI.nd, box = $('#nd-detect');
   if (!nd || !box) return;
+  const sb = $('#nd-sub');
+  if (sb) sb.innerHTML = subIds().length ? '<span class="lbl">Subject</span><div class="chips">' + subChips(nd.sub, 'nd-sub') + '</div>' : '';
   $('#nd-filelist').innerHTML = nd.files.map((f, i) => `<span class="file${f.status === 'err' ? ' err' : ''}">${f.status === 'busy' ? '<span class="dots"><i></i><i></i><i></i></span>' : ''}<span>${esc(f.name)}${f.status === 'err' ? ' · ' + esc(f.msg) : f.status === 'ok' ? ' · ' + Number(f.text.length).toLocaleString() + ' chars' : ' · reading'}</span><button data-act="nd-rm" data-i="${i}" aria-label="Remove ${esc(f.name)}">${ic('x')}</button></span>`).join('');
   const tb = nd.table = ndTable();
   if (tb && !nd.headerSet) nd.header = tb.header;
@@ -392,8 +450,7 @@ function newDeckRecord(name, extra) {
   const did = mkid('k');
   S.decks[did] = Object.assign({ k: 'deck', id: did, name: String(name).slice(0, 60), created: now(), ut: now(), cv: 0, count: 0, chunks: 0, srcs: [], syl: 0, sylParts: 0, plan: [], cursor: 0 }, extra || {});
   S.cards[did] = []; S.src[did] = { parts: [], syllabus: '' }; S.prog[did] = {};
-  S.profile.active = did;
-  Store.touchActive();
+  setActive(did);
   return did;
 }
 async function ndBuild() {
@@ -406,7 +463,8 @@ async function ndBuild() {
   if (eff === 'ai' && !aiOK()) { toast('Claude is not available here. Paste a table to make cards without it.', 4200); return; }
   $('#nd-go').disabled = true;
   const name = nd.name || (files[0] ? prettyName(files[0].name) : firstLine(nd.text)) || 'Untitled deck';
-  const did = newDeckRecord(name);
+  const did = newDeckRecord(name, S.subs[nd.sub] ? { sub: nd.sub } : null);
+  followDeck(did);
   UI.nd = null;
   try {
     await Store.saveDeck(did);
@@ -428,30 +486,31 @@ async function ndBuild() {
   }
 }
 const SAMPLE = {
-  name: 'Sample · Snow and ice',
-  syllabus: '1. Frost and ice types: distinguish rime, hoarfrost and graupel by how they form.\n2. Phase changes: name the transitions between vapour, liquid and ice; define supercooling.\n3. Snow crystals: describe their symmetry and the people who first documented them.\n4. Snowpack: explain albedo and how snow becomes glacier ice.',
-  notes: 'Frost and ice types. Rime forms when supercooled fog or cloud droplets freeze on contact with a cold surface, building white, feathery ice on the windward side of objects. Hoarfrost forms differently: water vapour deposits directly as ice crystals with no liquid stage. Graupel, also called soft hail, is a snowflake that has been coated in rime until it becomes a soft pellet.\n\nPhase changes. Pure water freezes at 0 °C at standard pressure, but small droplets can stay liquid below that temperature; they are then called supercooled. Deposition is the change from vapour straight to solid; the reverse is sublimation. Water is densest at about 4 °C, which is why ice floats and lakes freeze from the top.\n\nSnow crystals. A snow crystal has sixfold (hexagonal) symmetry because of the way water molecules bond in ice. Wilson Bentley of Vermont photographed thousands of snow crystals from 1885 and popularised the idea that no two are alike. Ukichiro Nakaya grew the first artificial snow crystals in the 1930s and drew a diagram linking crystal shape to temperature and humidity.\n\nSnowpack. Albedo is the fraction of sunlight a surface reflects; fresh snow reflects roughly 80 to 90 percent. Wind carves hard snow into ridges called sastrugi. Granular snow that survives at least one melt season is called firn, the stage between snow and glacier ice.',
+  name: 'Sample · Charge and lightning',
+  syllabus: '1. Units: state the SI units of charge, current, potential difference, resistance and power.\n2. Circuits: apply Ohm’s law and P = VI; distinguish conductors from insulators.\n3. Lightning: describe how charge separates in a thundercloud and what happens during a strike.',
+  notes: 'Units. Electric charge is measured in coulombs (C). Current is the rate of flow of charge and is measured in amperes (A): one ampere is one coulomb per second. Potential difference, or voltage, is measured in volts (V), resistance in ohms, and power in watts.\n\nCircuits. Ohm’s law says the voltage across a resistor equals the current through it multiplied by its resistance, V = IR. Electrical power equals voltage multiplied by current, P = VI. In a metal wire the charge carriers are electrons. A conductor lets charge flow easily; an insulator does not.\n\nLightning. Inside a thundercloud, collisions between ice particles separate charge, and negative charge gathers at the base of the cloud. When the electric field grows strong enough, a faint stepped leader works its way down. When it connects with the ground, a bright return stroke runs back up the channel and produces most of the light. The channel heats the air to about 30,000 degrees Celsius, roughly five times hotter than the surface of the Sun. The air expands explosively, and that shock wave is heard as thunder. Sound travels at about 343 metres per second in air at 20 degrees Celsius, so three seconds between flash and thunder is about one kilometre. Benjamin Franklin’s kite experiment in 1752 showed that lightning is electrical, and he invented the lightning rod, a metal rod wired to earth that gives a strike a safe path to the ground.',
   cards: [
-    ['Supercooled fog droplets freezing onto a cold surface form which kind of ice?', 'Rime', ['rime ice'], ['Hoarfrost', 'Glaze', 'Graupel'], 'Frost types', 'Rime is frozen liquid droplets; hoarfrost comes straight from vapour.'],
-    ['Which frost forms when water vapour deposits directly as ice crystals, with no liquid stage?', 'Hoarfrost', ['hoar frost', 'hoar'], ['Rime', 'Graupel', 'Sleet'], 'Frost types', 'Hoarfrost skips the liquid stage entirely.'],
-    ['A snowflake coated in rime until it becomes a soft pellet is called what?', 'Graupel', ['soft hail', 'snow pellets'], ['Hail', 'Sleet', 'Firn'], 'Frost types', 'Graupel is a rimed snowflake, softer than true hail.'],
-    ['What is the name for the phase change from vapour straight to solid?', 'Deposition', ['desublimation'], ['Sublimation', 'Condensation', 'Freezing'], 'Phase changes', 'Deposition is the reverse of sublimation.'],
-    ['Liquid water that stays liquid below 0 °C is described as what?', 'Supercooled', ['super-cooled', 'supercooled water'], ['Superheated', 'Saturated', 'Sublimated'], 'Phase changes', 'Small, pure droplets can remain liquid well below freezing.'],
-    ['At what temperature, in °C, does pure water freeze at standard pressure?', '0', ['0 °C', 'zero'], ['4', '32', '-4'], 'Phase changes', 'The Celsius scale puts the freezing point of water at zero.'],
-    ['Water is densest at about what temperature, in °C?', '4', ['4 °C', 'four', '3.98'], ['0', '10', '-4'], 'Phase changes', 'Because water is densest at 4 °C, ice floats and lakes freeze from the top.'],
-    ['How many sides of symmetry does a typical snow crystal have?', 'Six', ['6', 'sixfold', 'hexagonal'], ['Four', 'Five', 'Eight'], 'Snow crystals', 'Water molecules bond into a hexagonal lattice.'],
-    ['Who photographed thousands of snow crystals from 1885 and popularised the idea that no two are alike?', 'Wilson Bentley', ['Bentley', 'Snowflake Bentley', 'Wilson A. Bentley'], ['Ukichiro Nakaya', 'Johannes Kepler', 'Robert Hooke'], 'Snow crystals', 'Bentley worked in Vermont with a microscope fitted to a camera.'],
-    ['Which scientist grew the first artificial snow crystals and linked crystal shape to temperature and humidity?', 'Ukichiro Nakaya', ['Nakaya'], ['Wilson Bentley', 'Johannes Kepler', 'Robert Hooke'], 'Snow crystals', 'Nakaya’s diagram maps crystal form against temperature and humidity.'],
-    ['The fraction of sunlight a surface reflects is called its what?', 'Albedo', [], ['Emissivity', 'Opacity', 'Refraction'], 'Snowpack', 'Fresh snow has one of the highest albedos of any natural surface.'],
-    ['Roughly what percentage of sunlight does fresh snow reflect?', '80 to 90%', ['80-90%', '80%', '85%', '90%', '80 to 90 percent'], ['10 to 20%', '30 to 40%', '50 to 60%'], 'Snowpack', 'An albedo of 0.8 to 0.9 is why fresh snow is dazzling.'],
-    ['Ridges of hard snow carved by the wind are known as what?', 'Sastrugi', ['zastrugi'], ['Seracs', 'Moraines', 'Penitentes'], 'Snowpack', 'Sastrugi run parallel to the prevailing wind.'],
-    ['Granular snow that has survived at least one melt season, on its way to becoming glacier ice, is called what?', 'Firn', [], ['Graupel', 'Sastrugi', 'Rime'], 'Snowpack', 'Firn is the stage between seasonal snow and glacier ice.']
+    ['What is the SI unit of electric charge?', 'Coulomb', ['C', 'coulombs'], ['Ampere', 'Volt', 'Ohm'], 'Units', 'One coulomb is the charge moved by one ampere in one second.'],
+    ['What is the SI unit of electric current?', 'Ampere', ['amp', 'amps', 'A', 'amperes'], ['Coulomb', 'Volt', 'Watt'], 'Units', 'One ampere is one coulomb of charge per second.'],
+    ['What is the SI unit of resistance?', 'Ohm', ['ohms'], ['Volt', 'Watt', 'Farad'], 'Units', 'Resistance is voltage divided by current.'],
+    ['In what unit is electrical power measured?', 'Watt', ['watts', 'W'], ['Joule', 'Volt', 'Ampere'], 'Units', 'One watt is one joule per second.'],
+    ['Which law states that V = IR?', 'Ohm’s law', ['Ohms law', 'Ohm law'], ['Coulomb’s law', 'Faraday’s law', 'Lenz’s law'], 'Circuits', 'Voltage equals current multiplied by resistance.'],
+    ['Electrical power equals voltage multiplied by what?', 'Current', [], ['Resistance', 'Charge', 'Time'], 'Circuits', 'P = VI.'],
+    ['What particle carries charge through a metal wire?', 'Electron', ['electrons'], ['Proton', 'Neutron', 'Photon'], 'Circuits', 'Free electrons drift through the metal.'],
+    ['What is the term for a material that does not let charge flow easily?', 'Insulator', ['an insulator', 'insulators'], ['Conductor', 'Semiconductor', 'Electrolyte'], 'Circuits', 'Rubber, glass and dry air are insulators.'],
+    ['What sign of charge gathers at the base of a typical thundercloud?', 'Negative', ['negative charge'], ['Positive', 'Neutral', 'It alternates'], 'Lightning', 'Collisions between ice particles carry negative charge to the cloud base.'],
+    ['The bright stroke that runs back up the channel and makes most of a flash’s light is called what?', 'Return stroke', ['the return stroke'], ['Stepped leader', 'Dart leader', 'Corona'], 'Lightning', 'It follows once the stepped leader connects with the ground.'],
+    ['A lightning channel heats the air to about how many degrees Celsius?', '30,000', ['30000', '30 000', 'about 30,000'], ['3,000', '300,000', '1,000'], 'Lightning', 'That is roughly five times hotter than the surface of the Sun.'],
+    ['The shock wave from air heated by lightning is heard as what?', 'Thunder', [], ['An echo', 'Static', 'A sonic boom'], 'Lightning', 'The air expands explosively along the channel.'],
+    ['Roughly how fast does sound travel in air at 20 °C, in metres per second?', '343', ['340', 'about 343', '343 m/s'], ['34', '3,430', '300,000'], 'Lightning', 'Three seconds between flash and thunder is about one kilometre.'],
+    ['Whose 1752 kite experiment showed that lightning is electrical?', 'Benjamin Franklin', ['Franklin', 'Ben Franklin'], ['Michael Faraday', 'Alessandro Volta', 'Nikola Tesla'], 'Lightning', 'He went on to invent the lightning rod.']
   ]
 };
 async function makeSample() {
   const have = deckIds().find(id => S.decks[id].sample);
-  if (have) { S.profile.active = have; Store.touchActive(); toast('The sample deck is already in your library.'); return go('home'); }
-  const did = newDeckRecord(SAMPLE.name, { sample: true });
+  if (have) { setActive(have); followDeck(have); toast('The sample deck is already in your library.'); return go('home'); }
+  const did = newDeckRecord(SAMPLE.name, Object.assign({ sample: true }, S.subs[curSub()] ? { sub: curSub() } : null));
+  followDeck(did);
   S.cards[did] = SAMPLE.cards.map(c => ({ id: mkid('c'), q: c[0], a: c[1], alts: c[2], d: c[3], topic: c[4], why: c[5] }));
   go('home');
   try {
@@ -660,12 +719,12 @@ function paintChat() {
   tools.hidden = th.kind !== 'lesson';
   tools.innerHTML = th.kind === 'lesson' ? `<button class="btn sm" data-act="lesson-quiz" ${Chat.busy ? 'disabled' : ''}>${ic('bolt')}Quiz me on this</button><button class="btn sm" data-act="lesson-done">${ic('check')}${l && l.st === 2 ? 'Done' : 'Mark as done'}</button>` : '';
   const msgs = th.turns.map(t => t.role === 'user' ? (t.auto ? '' : '<div class="msg me">' + esc(t.content) + '</div>') : '<div class="msg ai"><p class="lbl who">Mr Claude</p><div class="prose">' + md(t.content) + '</div></div>').join('');
-  const empty = `<div class="mc-empty"><canvas data-crystal="mr-claude" data-g="0.85"></canvas><p>${aiOK() ? (th.kind === 'quiz' ? 'Stuck on this one? Ask for a hint, or for the idea behind it. The answer stays hidden until you ask for it.' : 'Ask about anything in your notes. Answers draw on the material and syllabus in this deck.') : 'Mr Claude is not available in this view. Open the page inside Claude and allow it to use Claude.'}</p></div>`;
+  const empty = `<div class="mc-empty"><canvas data-bolt="mr-claude" data-g="0.85"></canvas><p>${aiOK() ? (th.kind === 'quiz' ? 'Stuck on this one? Ask for a hint, or for the idea behind it. The answer stays hidden until you ask for it.' : 'Ask about anything in your notes. Answers draw on the material and syllabus in this deck.') : 'Mr Claude is not available in this view. Open the page inside Claude and allow it to use Claude.'}</p></div>`;
   const log = $('#mc-log');
   log.innerHTML = (msgs || (Chat.busy ? '' : empty)) +
     (Chat.busy ? '<div class="msg ai"><p class="lbl who">Mr Claude</p><div class="prose" id="mc-live"><p class="checking"><span class="dots"><i></i><i></i><i></i></span>Thinking</p></div></div>' : '') +
     (Chat.err ? '<div class="msg err">' + esc(Chat.err) + '</div>' : '');
-  drawCrystals(log);
+  drawBolts(log);
   log.scrollTop = log.scrollHeight;
   $('#mc-quick').innerHTML = Chat.busy || !aiOK() ? '' : quickPrompts(th).map(q => `<button class="chip" data-act="chat-quick" data-q="${esc(q)}"><span>${esc(q)}</span></button>`).join('');
   const send = $('#mc-send');
@@ -722,7 +781,7 @@ const ACT = {
   'chat-quick': el => chatSend(el.dataset.q),
   'new-deck': () => openNewDeck(),
   sample: () => makeSample(),
-  'set-active': el => { S.profile.active = el.dataset.did; Store.touchActive(); render(); $('#main').scrollTop = 0; },
+  'set-active': el => { setActive(el.dataset.did); render(); $('#main').scrollTop = 0; },
   'quick-start': () => startSession({ did: activeDeck() }),
   drill: el => startSession({ did: activeDeck(), topics: [el.dataset.topic], mode: 'endless', focus: 'weak' }),
   'retry-cards': el => { delete cardErr[el.dataset.did]; render(); },
@@ -756,7 +815,13 @@ const ACT = {
   'lesson-done': () => { const th = Chat.thread, l = lessonOf(th); if (!l) return; l.st = 2; Store.saveDeck(th.did); toast('Lesson marked as done'); closeChat(); },
   'ask-deck': () => openChat(defaultThread()),
 
-  'lib-open': el => { UI.lib = { mode: 'deck', did: el.dataset.did, q: '' }; render(); $('#main').scrollTop = 0; },
+  'lib-open': el => { UI.lib = { mode: 'deck', did: el.dataset.did, q: '' }; followDeck(el.dataset.did); render(); $('#main').scrollTop = 0; },
+  sub: el => selectSub(el.dataset.id),
+  'sub-add': () => subjectSheet(null),
+  'sub-edit': el => subjectSheet(el.dataset.id),
+  'sj-color': el => { if (UI.sheet && UI.sheet.setC) UI.sheet.setC(el.dataset.c); },
+  'nd-sub': el => { const id = el.dataset.id; UI.nd.sub = id; S.profile.sub = id || null; Store.touchActive(); applyLook(); paintSubs(); paintNewDeck(); },
+  'deck-move': el => { const did = UI.lib.did, d = S.decks[did], id = el.dataset.id; if (!d) return; if (S.subs[id]) d.sub = id; else delete d.sub; Store.saveDeck(did); setActive(did); followDeck(did); render(); toast(S.subs[id] ? 'Moved to ' + S.subs[id].name : 'Moved out of its subject'); },
   'lib-back': () => { UI.lib = { mode: 'list', did: null, q: '' }; UI.nd = null; render(); $('#main').scrollTop = 0; },
   'nd-file': () => $('#nd-files').click(),
   'nd-sylfile': () => $('#nd-sylfile').click(),
@@ -843,6 +908,8 @@ document.addEventListener('input', e => {
   else if (t.id === 'nd-text') ndDetectSoon();
   else if (t.id === 'mc-in') { t.style.height = 'auto'; t.style.height = Math.min(136, t.scrollHeight + 2) + 'px'; }
   else if (t.id === 'pf-a1' || t.id === 'pf-a2') { const p = S.profile.prefs; p[t.id.slice(3)] = t.value; p.preset = 'custom'; applyLook(); saveLookSoon(); }
+  else if (t.id === 'sj-name') { const el = $('#sj-prev-name'); if (el) el.textContent = t.value.trim() || 'New subject'; }
+  else if (t.id === 'sj-c') { if (UI.sheet && UI.sheet.setC) UI.sheet.setC(t.value); }
 });
 document.addEventListener('change', e => {
   const t = e.target;
@@ -865,7 +932,7 @@ document.addEventListener('drop', e => {
   if (e.dataTransfer && e.dataTransfer.files && e.dataTransfer.files.length) ndAddFiles(e.dataTransfer.files);
 });
 window.addEventListener('hashchange', onRoute);
-window.addEventListener('resize', debounce(() => drawCrystals(), 180));
+window.addEventListener('resize', debounce(() => drawBolts(), 180));
 document.addEventListener('visibilitychange', () => { if (document.hidden) Store.flush(); });
 window.addEventListener('pagehide', () => Store.flush());
 
@@ -884,7 +951,7 @@ function boot() {
   $('#mc-send').innerHTML = ic('up');
   try { const c = JSON.parse(localStorage.getItem('rime:look') || 'null'); if (c && typeof c === 'object') Object.assign(S.profile.prefs, c); } catch (e) {}
   applyLook(true);
-  drawCrystals();
+  drawBolts();
   let shown = false;
   onStore = (kind, code) => {
     if (kind === 'sync') return paintSync();
@@ -892,7 +959,7 @@ function boot() {
     applyLook();
     if (S.ready && !shown) { shown = true; render(); }
     else if (kind !== 'same') softRender();   // an echo of our own save changes nothing on screen
-    paintRail(); paintSync();
+    paintSubs(); paintRail(); paintSync();
   };
   const r = (location.hash || '#home').slice(1);
   UI.route = NAV.some(n => n[0] === r) ? r : 'home';

@@ -1,15 +1,16 @@
 /* ---------- state + storage ----------
    Cloud: everything lives in the viewer's private subtree (data/users/<id>/...), so it follows the Claude account.
      profile            settings, daily tallies, recent sessions
+     s_<subject>        a subject: name, colour, order
      d_<deck>           deck record            p_<deck>   per-question memory state
      d_<deck>/cards/*   question bank chunks   d_<deck>/src/*   source text parts   d_<deck>/les/*   lesson chats
    Local: the same shape in localStorage, used when no account storage is available. */
-const PREF0 = { look: 'auto', preset: 'ember', a1: '#f0476a', a2: '#6b4bff', flat: false, motion: true, sound: false, haptic: true, pace: 'quick', typo: 'balanced' };
+const PREF0 = { look: 'auto', preset: 'storm', a1: '#7a6bff', a2: '#31c4ff', flat: false, motion: true, sound: false, haptic: true, pace: 'quick', typo: 'balanced' };
 const STUDY0 = { mode: 'endless', len: 10, mc: true, sa: true, focus: 'adaptive', topup: true };
-const profile0 = () => ({ v: 1, days: {}, goal: 30, prefs: { ...PREF0 }, pt: 0, active: null, study: { ...STUDY0 }, at: 0, sessions: [] });
+const profile0 = () => ({ v: 1, days: {}, goal: 30, prefs: { ...PREF0 }, pt: 0, active: null, sub: null, act: {}, study: { ...STUDY0 }, at: 0, sessions: [] });
 const CHUNK = 100, PART = 60000, SRC_MAX = 600000;
 
-const S = { ready: false, mode: 'boot', uid: null, stale: false, dead: false, err: null, pending: 0, profile: profile0(), decks: {}, prog: {}, progRt: {}, cards: {}, src: {}, les: {} };
+const S = { ready: false, mode: 'boot', uid: null, stale: false, dead: false, err: null, pending: 0, profile: profile0(), subs: {}, decks: {}, prog: {}, progRt: {}, cards: {}, src: {}, les: {} };
 let B = null;
 let onStore = () => {};
 
@@ -85,7 +86,7 @@ function mergeProfile(o, b) {
     o.days[k] = { n: Math.max(x ? x.n | 0 : 0, y.n | 0), c: Math.max(x ? x.c | 0 : 0, y.c | 0), x: Math.max(x ? x.x | 0 : 0, y.x | 0) };
   }
   if ((b.pt || 0) > (o.pt || 0)) { o.prefs = { ...PREF0, ...(b.prefs || {}) }; o.goal = b.goal || o.goal; o.pt = b.pt; }
-  if ((b.at || 0) > (o.at || 0)) { o.active = b.active || null; o.study = { ...STUDY0, ...(b.study || {}) }; o.at = b.at; }
+  if ((b.at || 0) > (o.at || 0)) { o.active = b.active || null; o.sub = b.sub || null; o.act = { ...(b.act || {}) }; o.study = { ...STUDY0, ...(b.study || {}) }; o.at = b.at; }
   const seen = new Set(o.sessions.map(s => s.t));
   for (const s of (b.sessions || [])) if (s && !seen.has(s.t)) o.sessions.push(s);
   o.sessions.sort((x, y) => y.t - x.t);
@@ -109,6 +110,12 @@ const cardLoads = {}, srcLoads = {};
 function applyChange(ch) {
   const id = ch.id;
   if (id === 'profile') { if (ch.data) mergeProfile(S.profile, ch.data); return; }
+  if (id.startsWith('s_')) {
+    const sid = id.slice(2);
+    if (!ch.data) delete S.subs[sid];
+    else if (!S.subs[sid] || (ch.data.ut || 0) >= (S.subs[sid].ut || 0)) S.subs[sid] = Object.assign({ id: sid }, ch.data);
+    return;
+  }
   if (id.startsWith('d_')) {
     const did = id.slice(2);
     if (!ch.data) { delete S.decks[did]; delete S.cards[did]; delete S.src[did]; return; }
@@ -154,7 +161,7 @@ const Store = {
     const sig = () => {
       let p = '';
       for (const did in S.prog) { let n = 0, last = 0; for (const id in S.prog[did]) { n++; if (S.prog[did][id][6] > last) last = S.prog[did][id][6]; } p += did + n + ':' + last + ';'; }
-      return JSON.stringify([S.profile, S.decks]) + p + S.stale + S.ready;
+      return JSON.stringify([S.profile, S.decks, S.subs]) + p + S.stale + S.ready;
     };
     B.listen((changes, meta, size) => {
       const was = sig();
@@ -196,6 +203,20 @@ const Store = {
     if (!d) return Promise.resolve();
     d.ut = now();
     return track(B.put('d_' + did, clone(d))).catch(saveFailed);
+  },
+  saveSub(id) {
+    const s = S.subs[id];
+    if (!s) return Promise.resolve();
+    s.ut = now();
+    return track(B.put('s_' + id, clone(s))).catch(saveFailed);
+  },
+  // decks in a deleted subject are kept and become unsorted
+  async deleteSub(id) {
+    delete S.subs[id];
+    const moved = Object.keys(S.decks).filter(did => S.decks[did].sub === id);
+    for (const did of moved) { delete S.decks[did].sub; await Store.saveDeck(did); }
+    if (S.profile.sub === id) { S.profile.sub = null; Store.touchActive(); }
+    return track(B.del('s_' + id)).catch(saveFailed);
   },
   resetProg(did) {
     S.prog[did] = {}; S.progRt[did] = now(); delete dirty.prog[did];
@@ -288,7 +309,6 @@ const Store = {
   },
   async deleteDeck(did) {
     delete S.decks[did]; delete S.cards[did]; delete S.src[did]; delete S.prog[did]; delete dirty.prog[did];
-    if (S.profile.active === did) { S.profile.active = deckIds()[0] || null; Store.touchActive(); }
     try {
       for (const col of ['cards', 'src', 'les']) {
         const docs = await B.subGet(did, col);
@@ -318,8 +338,30 @@ function bestStreak() {
   for (const k of keys) { run = prev && dayShift(prev, 1) === k ? run + 1 : 1; best = Math.max(best, run); prev = k; }
   return best;
 }
-const deckIds = () => Object.keys(S.decks).sort((a, b) => (S.decks[b].created || 0) - (S.decks[a].created || 0));
-function activeDeck() {
-  const a = S.profile.active;
-  return a && S.decks[a] ? a : (deckIds()[0] || null);
+/* subjects: '_' stands for decks that belong to no (existing) subject */
+const subIds = () => Object.keys(S.subs).sort((a, b) => ((S.subs[a].o || 0) - (S.subs[b].o || 0)) || ((S.subs[a].t || 0) - (S.subs[b].t || 0)));
+const subOf = d => d && d.sub && S.subs[d.sub] ? d.sub : '_';
+function deckIds(sub) {
+  let ids = Object.keys(S.decks);
+  if (sub) ids = ids.filter(id => subOf(S.decks[id]) === sub);
+  return ids.sort((a, b) => (S.decks[b].created || 0) - (S.decks[a].created || 0));
+}
+// the subject tab in view: a subject id, '_' for unsorted, or null for all subjects
+function curSub() {
+  const s = S.profile.sub;
+  if (s === '_') return subIds().length && deckIds('_').length ? '_' : null;
+  return s && S.subs[s] ? s : null;
+}
+function activeDeck(sub) {
+  if (sub === undefined) sub = curSub();
+  const ids = deckIds(sub || undefined), act = S.profile.act || {};
+  const a = act[sub || '*'];
+  if (a && ids.includes(a)) return a;
+  return S.profile.active && ids.includes(S.profile.active) ? S.profile.active : (ids[0] || null);
+}
+function setActive(did) {
+  const act = S.profile.act || (S.profile.act = {});
+  act[subOf(S.decks[did])] = did; act['*'] = did;
+  S.profile.active = did;
+  Store.touchActive();
 }

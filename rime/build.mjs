@@ -17,7 +17,7 @@ const js = readdirSync(join(here, 'src', 'js')).filter(f => f.endsWith('.js')).s
 if (/<\/script/i.test(js)) throw new Error('script source contains a closing script tag');
 
 const head = [
-  '<title>Rime Recall</title>',
+  '<title>Lightning Recall</title>',
   '<meta name="claude:viewport-fit-sides" content="cover">',
   '<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Big+Shoulders+Display:wght@600;700;800&family=Instrument+Sans:wght@400;500;600&family=DM+Mono:wght@400;500&display=swap">'
 ].join('\n');

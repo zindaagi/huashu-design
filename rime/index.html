@@ -1,9 +1,10 @@
-<title>Rime Recall</title>
+<title>Lightning Recall</title>
 <meta name="claude:viewport-fit-sides" content="cover">
 <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Big+Shoulders+Display:wght@600;700;800&family=Instrument+Sans:wght@400;500;600&family=DM+Mono:wght@400;500&display=swap">
 <style>
-/* Layout: a cold instrument panel (rail + one working column, hairlines, mono micro-labels);
-   one faceted gradient surface carries each deck's rime crystal, which grows as the deck is learned. */
+/* Layout: a cold instrument panel (rail + one working column, hairlines, mono micro-labels) under a strip of subject tabs.
+   The subject in view lends its colour to one faceted gradient surface, which carries the deck's lightning bolt;
+   the bolt reaches further toward the ground as the deck is learned. */
 :root{
   --bg:#0a0e14;--panel:#0f151e;--raise:#161e2a;--sunk:#06090d;--line:#1d2836;--line2:#2c3b50;--fg:#e8edf4;--fg2:#a8b4c5;--mute:#6d7c92;--good:#3fd39b;--good-bg:#0e2a22;--bad:#ff5c75;--bad-bg:#2d1118;--warn:#f0b454;--warn-bg:#2a2010;--scrim:rgba(4,6,10,.66);--ink:#ff7d95;color-scheme:dark;
   --a1:#f0476a;--a2:#6b4bff;--on:#ffffff;--onx:#0a0e14;
@@ -45,11 +46,29 @@ svg{display:block}
 .tabs a .i{width:20px;height:20px}
 .tabs a[aria-current="page"]{color:var(--fg)}
 .tabs a[aria-current="page"] .i{color:var(--ink)}
-.app.focus .top,.app.focus .tabs{display:none}
+.app.focus .top,.app.focus .tabs,.app.focus .subbar{display:none}
 
-.brand{display:flex;align-items:center;gap:9px;color:var(--fg);text-decoration:none;font:800 27px/1 var(--fd);letter-spacing:.09em}
-.brand .i{width:24px;height:24px;color:var(--ink);stroke-width:1.4}
-.brand small{font:500 9.5px/1 var(--fm);letter-spacing:.22em;color:var(--mute);text-transform:uppercase;align-self:flex-end;padding-bottom:3px}
+.logo{flex:none;display:grid;place-items:center;width:36px;height:36px;border-radius:var(--r)}
+.logo svg{width:30px;height:30px}
+.rail .logo{width:46px;height:46px;margin-left:4px}
+.rail .logo svg{width:38px;height:38px}
+/* subject tabs: one per subject, each in its own colour */
+.subbar{display:none}
+.subs{display:flex;align-items:center;gap:6px;min-width:0;overflow-x:auto;scrollbar-width:none;overscroll-behavior-x:contain}
+.subs::-webkit-scrollbar{display:none}
+.stab{flex:none;display:inline-flex;align-items:center;gap:7px;height:34px;padding:0 12px;border:1px solid var(--line2);border-radius:var(--r);color:var(--fg2);font:500 11.5px/1 var(--fm);letter-spacing:.08em;text-transform:uppercase;white-space:nowrap;transition:background .12s,color .12s,border-color .12s}
+.stab:hover{border-color:var(--mute);color:var(--fg)}
+.stab i,.chip.sub i,.sj-row i{flex:none;display:block;width:9px;height:14px;background:linear-gradient(160deg,var(--c),var(--c2));clip-path:polygon(62% 0,0 58%,44% 58%,30% 100%,100% 38%,56% 38%)}
+.stab.on{background:linear-gradient(135deg,var(--c,var(--fg)),var(--c2,var(--fg)));border-color:transparent;color:var(--co,var(--bg))}
+.stab.on i{background:var(--co)}
+.stab.add{padding:0 9px;border-style:dashed}
+.stab .i{width:15px;height:15px}
+.chip.sub[aria-pressed="true"]{background:linear-gradient(135deg,var(--c),var(--c2));border-color:transparent;color:var(--co)}
+.chip.sub[aria-pressed="true"] i{background:var(--co)}
+.sj-row{display:flex;align-items:center;gap:10px}
+.sj-prev{display:flex;align-items:center;gap:10px;min-height:60px;padding:10px 18px;background:linear-gradient(135deg,var(--c),var(--c2));color:var(--co);clip-path:polygon(0 0,calc(100% - 14px) 0,100% 14px,100% 100%,14px 100%,0 calc(100% - 14px))}
+.sj-prev b{font:800 27px/1 var(--fd);text-transform:uppercase;letter-spacing:.03em;overflow-wrap:anywhere}
+.sj-prev .i{width:22px;height:22px;fill:currentColor;stroke:none}
 .pill{display:inline-flex;align-items:center;gap:6px;height:30px;padding:0 10px;border:1px solid var(--line2);border-radius:var(--r);font:500 12px/1 var(--fm);color:var(--fg2);font-variant-numeric:tabular-nums}
 .pill .i{width:14px;height:14px;color:var(--ink)}
 .sync{display:flex;align-items:center;gap:7px;font:500 10px/1.2 var(--fm);letter-spacing:.12em;text-transform:uppercase;color:var(--mute)}
@@ -57,8 +76,11 @@ svg{display:block}
 .sync.ok i{background:var(--good)}.sync.busy i{background:var(--warn)}.sync.bad i{background:var(--bad)}
 
 @media (min-width:900px){
-  .app{grid-template-columns:232px minmax(0,1fr);grid-template-rows:minmax(0,1fr)}
+  .app{grid-template-columns:232px minmax(0,1fr);grid-template-rows:auto minmax(0,1fr)}
   .top,.tabs{display:none}
+  .rail{grid-column:1;grid-row:1 / span 2}
+  .main{grid-column:2;grid-row:2}
+  .subbar{display:block;grid-column:2;grid-row:1;padding:12px 28px;padding-right:max(28px,env(safe-area-inset-right,0px));border-bottom:1px solid var(--line)}
   .rail{display:flex;flex-direction:column;gap:24px;min-height:0;overflow-y:auto;padding:22px 14px 16px;padding-left:max(14px,env(safe-area-inset-left,0px));border-right:1px solid var(--line);background:var(--panel)}
   .wrap{padding-block:28px 56px;padding-left:28px;padding-right:max(28px,env(safe-area-inset-right,0px))}
 }
@@ -139,7 +161,7 @@ svg{display:block}
 @media (min-width:1120px){
   .home{grid-template-columns:minmax(0,1fr) 316px;align-items:start}
   .home>.side{grid-column:2;grid-row:1 / span 4}
-  .home>.hero,.home>.duo,.home>.decks,.home>.how{grid-column:1}
+  .home>.hero,.home>.duo,.home>.decks,.home>.how,.home>.over{grid-column:1}
 }
 .goal{display:grid;grid-template-columns:76px minmax(0,1fr);gap:14px;align-items:center}
 .ring{position:relative;width:76px;height:76px}
@@ -178,11 +200,24 @@ svg{display:block}
 .deck b{font:700 20px/1 var(--fd);text-transform:uppercase;letter-spacing:.03em;overflow-wrap:anywhere}
 .deck .lbl{font-size:10px}
 .deck.add{align-items:center;justify-content:center;border-style:dashed;color:var(--fg2);min-height:150px}
+.over{gap:18px}
+.subgrid{display:grid;grid-template-columns:repeat(auto-fill,minmax(min(100%,210px),1fr));gap:14px}
+.subcard{position:relative;overflow:hidden;display:flex;flex-direction:column;justify-content:flex-end;gap:7px;min-width:0;min-height:172px;padding:16px;background:linear-gradient(135deg,var(--c),var(--c2));color:var(--co);clip-path:polygon(0 0,calc(100% - 18px) 0,100% 18px,100% 100%,18px 100%,0 calc(100% - 18px));transition:filter .12s,transform .08s}
+.subcard:hover{filter:brightness(1.09)}
+.subcard:active{transform:translateY(1px)}
+.subcard:focus-visible{outline:0;box-shadow:inset 0 0 0 3px var(--co)}
+.subcard canvas{position:absolute;right:-6px;top:-4px;width:124px;height:150px;color:var(--co);opacity:.55;pointer-events:none}
+.subcard .lbl{position:relative;color:color-mix(in srgb,var(--co) 76%,transparent)}
+.subcard b{position:relative;max-width:11ch;font:800 34px/.9 var(--fd);text-transform:uppercase;letter-spacing:.01em;overflow-wrap:anywhere}
+.subcard-s{position:relative;display:flex;flex-wrap:wrap;gap:4px 14px;font:500 11px/1.2 var(--fm);letter-spacing:.08em;text-transform:uppercase;color:color-mix(in srgb,var(--co) 80%,transparent)}
+.subcard-s em{font-style:normal;color:var(--co)}
+.subcard.plain{--co:var(--fg);background:var(--panel);border:1px solid var(--line);border-radius:var(--r);clip-path:none}
+.subcard.plain canvas{color:var(--fg2)}
 .how{display:grid;gap:12px;grid-template-columns:repeat(auto-fit,minmax(min(100%,220px),1fr))}
 .how .card b{display:block;font:700 22px/1 var(--fd);text-transform:uppercase;letter-spacing:.03em;margin:10px 0 6px}
 .how .card p{font-size:13.5px;color:var(--fg2)}
 .boot{min-height:60vh;display:grid;place-items:center;text-align:center}
-.boot canvas{width:120px;height:120px;color:var(--fg2);margin:0 auto 18px;animation:spin 14s linear infinite}
+.boot canvas{width:120px;height:120px;color:var(--fg2);margin:0 auto 18px;animation:blink 1.6s ease-in-out infinite}
 
 /* ---------- study ---------- */
 .setup{max-width:760px;display:flex;flex-direction:column;gap:22px}
@@ -366,9 +401,8 @@ svg{display:block}
 
 <div class="app" id="app">
   <nav class="rail" aria-label="Main">
-    <a class="brand" href="#home" aria-label="Rime, home">
-      <svg class="i" viewBox="0 0 24 24" aria-hidden="true"><path d="M12 2.5v19M3.8 7.25l16.4 9.5M20.2 7.25 3.8 16.75M12 6.5 9.6 4.4M12 6.5l2.4-2.1M12 17.5l-2.4 2.1M12 17.5l2.4 2.1"></path></svg>
-      RIME <small>recall</small>
+    <a class="logo" href="#home" aria-label="Home">
+      <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M13.6 1.5 3.8 13.6h6.3L8.4 22.5 20.2 9.4h-6.6z" fill="url(#ringgrad)"></path></svg>
     </a>
     <div class="nav" id="nav-rail"></div>
     <button class="btn" data-act="open-claude" id="rail-claude">Ask Mr Claude</button>
@@ -379,20 +413,20 @@ svg{display:block}
   </nav>
 
   <header class="top">
-    <a class="brand" href="#home" aria-label="Rime, home">
-      <svg class="i" viewBox="0 0 24 24" aria-hidden="true"><path d="M12 2.5v19M3.8 7.25l16.4 9.5M20.2 7.25 3.8 16.75M12 6.5 9.6 4.4M12 6.5l2.4-2.1M12 17.5l-2.4 2.1M12 17.5l2.4 2.1"></path></svg>
-      RIME
+    <a class="logo" href="#home" aria-label="Home">
+      <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M13.6 1.5 3.8 13.6h6.3L8.4 22.5 20.2 9.4h-6.6z" fill="url(#ringgrad)"></path></svg>
     </a>
-    <span class="grow"></span>
-    <span class="pill" id="top-streak" title="Day streak"></span>
+    <div class="subs grow" id="subs-top" role="group" aria-label="Subjects"></div>
     <button class="btn sm" data-act="open-claude" aria-label="Ask Mr Claude" id="top-claude"></button>
   </header>
+
+  <div class="subbar"><div class="subs" id="subs-bar" role="group" aria-label="Subjects"></div></div>
 
   <main class="main" id="main">
     <div class="wrap" id="view">
       <div class="boot">
         <div>
-          <canvas id="boot-art" data-crystal="boot" data-g="0.7" width="120" height="120"></canvas>
+          <canvas id="boot-art" data-bolt="boot" data-g="1" width="120" height="120"></canvas>
           <p class="lbl">Opening your library</p>
         </div>
       </div>
@@ -511,6 +545,37 @@ function readable(c, bg, min = 4.2) {
   return out;
 }
 
+function hexHsl(hex) {
+  const [r, g, b] = hexRgb(hex).map(v => v / 255), mx = Math.max(r, g, b), mn = Math.min(r, g, b), l = (mx + mn) / 2, d = mx - mn;
+  let h = 0, sat = 0;
+  if (d) {
+    sat = d / (1 - Math.abs(2 * l - 1));
+    h = mx === r ? ((g - b) / d) % 6 : mx === g ? (b - r) / d + 2 : (r - g) / d + 4;
+    h = (h * 60 + 360) % 360;
+  }
+  return [h, sat, l];
+}
+function hslHex(h, sat, l) {
+  const c = (1 - Math.abs(2 * l - 1)) * sat, x = c * (1 - Math.abs((h / 60) % 2 - 1)), m = l - c / 2;
+  const [r, g, b] = h < 60 ? [c, x, 0] : h < 120 ? [x, c, 0] : h < 180 ? [0, c, x] : h < 240 ? [0, x, c] : h < 300 ? [x, 0, c] : [c, 0, x];
+  return rgbHex([(r + m) * 255, (g + m) * 255, (b + m) * 255]);
+}
+/* the far stop of a subject's gradient: a deeper neighbour of its colour (warm hues lean warmer, cool hues cooler) */
+function partner(c) {
+  const [h, sat, l] = hexHsl(c), warm = h < 70 || h >= 320;
+  return hslHex((h + (warm ? -20 : 24) + 360) % 360, clamp(sat, 0, 1), clamp(l * 0.8, 0.14, 0.8));
+}
+function onColor(a, b) {
+  const w = Math.min(contrast('#ffffff', a), contrast('#ffffff', b)), d = Math.min(contrast('#0a0e14', a), contrast('#0a0e14', b));
+  return w >= 3 || w >= d ? '#ffffff' : '#0a0e14';
+}
+const okHex = c => /^#[0-9a-f]{6}$/i.test(String(c || ''));
+function subStyle(c, flat) {
+  if (!okHex(c)) return '';
+  const c2 = flat ? c : partner(c);
+  return '--c:' + c + ';--c2:' + c2 + ';--co:' + onColor(c, c2);
+}
+
 /* a small, escape-first Markdown renderer for Mr Claude's replies */
 function mdInline(s) {
   return s
@@ -586,7 +651,8 @@ const ICONS = {
   trash: '<path d="M5 7h14M10 7V4.5h4V7M7 7l.8 12.5h8.4L17 7"/>',
   edit: '<path d="m4.5 19.5 1-4L16 5l3 3L8.5 18.5z"/>',
   file: '<path d="M7 3.5h7l4 4V20.5H7z"/><path d="M14 3.5v4h4"/>',
-  spark: '<path d="M12 3v18M4.2 7.5l15.6 9M19.8 7.5 4.2 16.5"/>',
+  spark: '<path d="M13.2 3 5 13.2h6L9.8 21 19 10.6h-6.2z"/>',
+  play: '<path d="M7.5 4.8v14.4l11.5-7.2z"/>',
   warn: '<path d="M12 4 3 19.5h18z"/><path d="M12 10v4.5M12 17v.2"/>',
   dot: '<circle cx="12" cy="12" r="2.4"/>'
 };
@@ -595,15 +661,16 @@ const ic = n => '<svg class="i" viewBox="0 0 24 24" aria-hidden="true">' + (ICON
 /* ---------- state + storage ----------
    Cloud: everything lives in the viewer's private subtree (data/users/<id>/...), so it follows the Claude account.
      profile            settings, daily tallies, recent sessions
+     s_<subject>        a subject: name, colour, order
      d_<deck>           deck record            p_<deck>   per-question memory state
      d_<deck>/cards/*   question bank chunks   d_<deck>/src/*   source text parts   d_<deck>/les/*   lesson chats
    Local: the same shape in localStorage, used when no account storage is available. */
-const PREF0 = { look: 'auto', preset: 'ember', a1: '#f0476a', a2: '#6b4bff', flat: false, motion: true, sound: false, haptic: true, pace: 'quick', typo: 'balanced' };
+const PREF0 = { look: 'auto', preset: 'storm', a1: '#7a6bff', a2: '#31c4ff', flat: false, motion: true, sound: false, haptic: true, pace: 'quick', typo: 'balanced' };
 const STUDY0 = { mode: 'endless', len: 10, mc: true, sa: true, focus: 'adaptive', topup: true };
-const profile0 = () => ({ v: 1, days: {}, goal: 30, prefs: { ...PREF0 }, pt: 0, active: null, study: { ...STUDY0 }, at: 0, sessions: [] });
+const profile0 = () => ({ v: 1, days: {}, goal: 30, prefs: { ...PREF0 }, pt: 0, active: null, sub: null, act: {}, study: { ...STUDY0 }, at: 0, sessions: [] });
 const CHUNK = 100, PART = 60000, SRC_MAX = 600000;
 
-const S = { ready: false, mode: 'boot', uid: null, stale: false, dead: false, err: null, pending: 0, profile: profile0(), decks: {}, prog: {}, progRt: {}, cards: {}, src: {}, les: {} };
+const S = { ready: false, mode: 'boot', uid: null, stale: false, dead: false, err: null, pending: 0, profile: profile0(), subs: {}, decks: {}, prog: {}, progRt: {}, cards: {}, src: {}, les: {} };
 let B = null;
 let onStore = () => {};
 
@@ -679,7 +746,7 @@ function mergeProfile(o, b) {
     o.days[k] = { n: Math.max(x ? x.n | 0 : 0, y.n | 0), c: Math.max(x ? x.c | 0 : 0, y.c | 0), x: Math.max(x ? x.x | 0 : 0, y.x | 0) };
   }
   if ((b.pt || 0) > (o.pt || 0)) { o.prefs = { ...PREF0, ...(b.prefs || {}) }; o.goal = b.goal || o.goal; o.pt = b.pt; }
-  if ((b.at || 0) > (o.at || 0)) { o.active = b.active || null; o.study = { ...STUDY0, ...(b.study || {}) }; o.at = b.at; }
+  if ((b.at || 0) > (o.at || 0)) { o.active = b.active || null; o.sub = b.sub || null; o.act = { ...(b.act || {}) }; o.study = { ...STUDY0, ...(b.study || {}) }; o.at = b.at; }
   const seen = new Set(o.sessions.map(s => s.t));
   for (const s of (b.sessions || [])) if (s && !seen.has(s.t)) o.sessions.push(s);
   o.sessions.sort((x, y) => y.t - x.t);
@@ -703,6 +770,12 @@ const cardLoads = {}, srcLoads = {};
 function applyChange(ch) {
   const id = ch.id;
   if (id === 'profile') { if (ch.data) mergeProfile(S.profile, ch.data); return; }
+  if (id.startsWith('s_')) {
+    const sid = id.slice(2);
+    if (!ch.data) delete S.subs[sid];
+    else if (!S.subs[sid] || (ch.data.ut || 0) >= (S.subs[sid].ut || 0)) S.subs[sid] = Object.assign({ id: sid }, ch.data);
+    return;
+  }
   if (id.startsWith('d_')) {
     const did = id.slice(2);
     if (!ch.data) { delete S.decks[did]; delete S.cards[did]; delete S.src[did]; return; }
@@ -748,7 +821,7 @@ const Store = {
     const sig = () => {
       let p = '';
       for (const did in S.prog) { let n = 0, last = 0; for (const id in S.prog[did]) { n++; if (S.prog[did][id][6] > last) last = S.prog[did][id][6]; } p += did + n + ':' + last + ';'; }
-      return JSON.stringify([S.profile, S.decks]) + p + S.stale + S.ready;
+      return JSON.stringify([S.profile, S.decks, S.subs]) + p + S.stale + S.ready;
     };
     B.listen((changes, meta, size) => {
       const was = sig();
@@ -790,6 +863,20 @@ const Store = {
     if (!d) return Promise.resolve();
     d.ut = now();
     return track(B.put('d_' + did, clone(d))).catch(saveFailed);
+  },
+  saveSub(id) {
+    const s = S.subs[id];
+    if (!s) return Promise.resolve();
+    s.ut = now();
+    return track(B.put('s_' + id, clone(s))).catch(saveFailed);
+  },
+  // decks in a deleted subject are kept and become unsorted
+  async deleteSub(id) {
+    delete S.subs[id];
+    const moved = Object.keys(S.decks).filter(did => S.decks[did].sub === id);
+    for (const did of moved) { delete S.decks[did].sub; await Store.saveDeck(did); }
+    if (S.profile.sub === id) { S.profile.sub = null; Store.touchActive(); }
+    return track(B.del('s_' + id)).catch(saveFailed);
   },
   resetProg(did) {
     S.prog[did] = {}; S.progRt[did] = now(); delete dirty.prog[did];
@@ -882,7 +969,6 @@ const Store = {
   },
   async deleteDeck(did) {
     delete S.decks[did]; delete S.cards[did]; delete S.src[did]; delete S.prog[did]; delete dirty.prog[did];
-    if (S.profile.active === did) { S.profile.active = deckIds()[0] || null; Store.touchActive(); }
     try {
       for (const col of ['cards', 'src', 'les']) {
         const docs = await B.subGet(did, col);
@@ -912,10 +998,32 @@ function bestStreak() {
   for (const k of keys) { run = prev && dayShift(prev, 1) === k ? run + 1 : 1; best = Math.max(best, run); prev = k; }
   return best;
 }
-const deckIds = () => Object.keys(S.decks).sort((a, b) => (S.decks[b].created || 0) - (S.decks[a].created || 0));
-function activeDeck() {
-  const a = S.profile.active;
-  return a && S.decks[a] ? a : (deckIds()[0] || null);
+/* subjects: '_' stands for decks that belong to no (existing) subject */
+const subIds = () => Object.keys(S.subs).sort((a, b) => ((S.subs[a].o || 0) - (S.subs[b].o || 0)) || ((S.subs[a].t || 0) - (S.subs[b].t || 0)));
+const subOf = d => d && d.sub && S.subs[d.sub] ? d.sub : '_';
+function deckIds(sub) {
+  let ids = Object.keys(S.decks);
+  if (sub) ids = ids.filter(id => subOf(S.decks[id]) === sub);
+  return ids.sort((a, b) => (S.decks[b].created || 0) - (S.decks[a].created || 0));
+}
+// the subject tab in view: a subject id, '_' for unsorted, or null for all subjects
+function curSub() {
+  const s = S.profile.sub;
+  if (s === '_') return subIds().length && deckIds('_').length ? '_' : null;
+  return s && S.subs[s] ? s : null;
+}
+function activeDeck(sub) {
+  if (sub === undefined) sub = curSub();
+  const ids = deckIds(sub || undefined), act = S.profile.act || {};
+  const a = act[sub || '*'];
+  if (a && ids.includes(a)) return a;
+  return S.profile.active && ids.includes(S.profile.active) ? S.profile.active : (ids[0] || null);
+}
+function setActive(did) {
+  const act = S.profile.act || (S.profile.act = {});
+  act[subOf(S.decks[did])] = did; act['*'] = did;
+  S.profile.active = did;
+  Store.touchActive();
 }
 
 /* ---------- memory model, question picking, marking ----------
@@ -1408,7 +1516,7 @@ async function chatRules(th, query) {
   let src = { parts: [], syllabus: '' };
   if (d) { try { src = await Store.loadSrc(th.did); } catch (e) {} }
   const L = [
-    'You are Mr Claude, a patient, exacting teacher inside a study app called Rime. You are talking with one student.',
+    'You are Mr Claude, a patient, exacting teacher inside a study app. You are talking with one student.',
     '',
     'How you teach:',
     '- Teach from the student\u2019s own MATERIAL and SYLLABUS below whenever they cover the point. If you go beyond them, say so in a few words.',
@@ -1545,53 +1653,74 @@ async function readFile(file) {
   return { name, text, kind };
 }
 
-/* ---------- the rime crystal, reward effects, sound ---------- */
-function crystalSpec(seed) {
-  const r = rng32(seed), n = 3 + Math.floor(r() * 3), br = [];
+/* ---------- the lightning bolt, reward effects, sound ---------- */
+function jagPath(r, x0, y0, x1, y1, rough, depth) {
+  let pts = [[x0, y0], [x1, y1]];
+  for (let d = 0; d < depth; d++) {
+    const next = [pts[0]];
+    for (let i = 1; i < pts.length; i++) {
+      const a = pts[i - 1], b = pts[i], dx = b[0] - a[0], dy = b[1] - a[1], len = Math.hypot(dx, dy) || 1, off = (r() - 0.5) * rough * len;
+      next.push([(a[0] + b[0]) / 2 - dy / len * off, (a[1] + b[1]) / 2 + dx / len * off], b);
+    }
+    pts = next;
+    rough *= 0.72;
+  }
+  return pts;
+}
+/* one deterministic strike per seed, in a unit square: a main channel from cloud to ground, with forks */
+function boltSpec(seed) {
+  const r = rng32(seed);
+  const main = jagPath(r, 0.42 + r() * 0.16, 0.03, 0.34 + r() * 0.32, 0.95, 0.62, 4);
+  const forks = [], n = 3 + Math.floor(r() * 3);
   for (let i = 0; i < n; i++) {
-    br.push({ t: 0.24 + (i + 0.15 + r() * 0.5) * (0.64 / n), len: 0.2 + r() * 0.26, thr: 0.08 + (i / n) * 0.62 + r() * 0.06, sub: r() > 0.4, st: 0.4 + r() * 0.35 });
-  }
-  return { br, tip: Math.floor(r() * 3), hex: 0.07 + r() * 0.05, ring: 0.17 + r() * 0.08 };
-}
-/* one deterministic six-fold dendrite per seed; g (0..1) is how much of it has grown */
-function strokeCrystal(ctx, sp, cx, cy, R, g, rot) {
-  const C = 0.5, Q = Math.sqrt(3) / 2;
-  const arm = R * (0.26 + 0.74 * (1 - Math.pow(1 - g, 1.6)));
-  ctx.save();
-  ctx.translate(cx, cy);
-  ctx.rotate(rot);
-  ctx.beginPath();
-  for (let k = 0; k < 6; k++) {
-    const a = k * Math.PI / 3, ca = Math.cos(a), sa = Math.sin(a);
-    const pt = (x, y) => [x * ca - y * sa, x * sa + y * ca];
-    const seg = (x0, y0, x1, y1) => { const p = pt(x0, y0), q = pt(x1, y1); ctx.moveTo(p[0], p[1]); ctx.lineTo(q[0], q[1]); };
-    seg(R * sp.hex, 0, arm, 0);
-    // centre plate, and a second plate once the crystal has some size
-    seg(R * sp.hex, 0, R * sp.hex * C, R * sp.hex * Q);
-    if (g > 0.3 && R * sp.ring < arm) seg(R * sp.ring, 0, R * sp.ring * C, R * sp.ring * Q);
-    for (const b of sp.br) {
-      const x = R * b.t;
-      if (g <= b.thr || x > arm) continue;
-      const f = clamp((g - b.thr) / (1 - b.thr) * 1.7, 0, 1), L = R * b.len * (1 - b.t * 0.55) * f;
-      for (const s of [-1, 1]) {
-        seg(x, 0, x + L * C, s * L * Q);
-        if (b.sub && f > 0.55) {
-          const sx = x + L * b.st * C, sy = s * L * b.st * Q;
-          seg(sx, sy, sx + L * 0.36 * (f - 0.55) / 0.45, sy);
-        }
-      }
+    const at = 2 + Math.floor(r() * (main.length - 7)), p = main[at], side = r() < 0.5 ? -1 : 1, len = 0.16 + r() * 0.22, ang = (0.35 + r() * 0.55) * side;
+    const pts = jagPath(r, p[0], p[1], clamp(p[0] + Math.sin(ang) * len, 0.04, 0.96), Math.min(0.93, p[1] + Math.cos(ang) * len), 0.5, 3);
+    let twig = null;
+    if (r() > 0.45) {
+      const q = pts[3 + Math.floor(r() * 3)], a2 = ang + side * (0.3 + r() * 0.4), l2 = len * 0.45;
+      twig = jagPath(r, q[0], q[1], clamp(q[0] + Math.sin(a2) * l2, 0.03, 0.97), Math.min(0.94, q[1] + Math.cos(a2) * l2), 0.5, 2);
     }
-    if (g > 0.5) {
-      const tl = R * 0.075 * (g - 0.5) * 2;
-      if (sp.tip === 0) { seg(arm, 0, arm + tl * C, tl * Q); seg(arm, 0, arm + tl * C, -tl * Q); }
-      else if (sp.tip === 1) { seg(arm, 0, arm - tl, tl * 0.5); seg(arm - tl, tl * 0.5, arm - 2 * tl, 0); seg(arm - 2 * tl, 0, arm - tl, -tl * 0.5); seg(arm - tl, -tl * 0.5, arm, 0); }
-      else { seg(arm - tl * 0.9, tl * 0.5, arm - tl * 0.9, -tl * 0.5); }
-    }
+    forks.push({ at: at / (main.length - 1), pts, twig });
   }
-  ctx.stroke();
-  ctx.restore();
+  return { main, forks };
 }
-function drawCrystal(cv, key, g, o) {
+function tracePart(ctx, pts, frac, X, Y) {
+  if (frac <= 0) return;
+  let total = 0;
+  for (let i = 1; i < pts.length; i++) total += Math.hypot(pts[i][0] - pts[i - 1][0], pts[i][1] - pts[i - 1][1]);
+  let left = total * Math.min(1, frac);
+  ctx.moveTo(X(pts[0][0]), Y(pts[0][1]));
+  for (let i = 1; i < pts.length && left > 0; i++) {
+    const a = pts[i - 1], b = pts[i], seg = Math.hypot(b[0] - a[0], b[1] - a[1]), k = seg ? Math.min(1, left / seg) : 1;
+    ctx.lineTo(X(a[0] + (b[0] - a[0]) * k), Y(a[1] + (b[1] - a[1]) * k));
+    left -= seg;
+  }
+}
+/* g (0..1) is the charge: the channel reaches further down and forks as it rises, and lands at 1 */
+function strokeBolt(ctx, sp, w, h, g, lw) {
+  const side = Math.min(w, h * 1.1), ox = (w - side) / 2, pad = Math.max(2, lw * 2);
+  const X = x => ox + pad + x * (side - pad * 2), Y = y => pad + y * (h - pad * 2);
+  const reach = 0.14 + 0.86 * (1 - Math.pow(1 - g, 1.5));
+  ctx.lineWidth = lw * 1.9;
+  ctx.beginPath(); tracePart(ctx, sp.main, reach, X, Y); ctx.stroke();
+  for (const f of sp.forks) {
+    const k = clamp((reach - f.at) / 0.34, 0, 1);
+    if (k <= 0) continue;
+    ctx.lineWidth = lw * 1.15;
+    ctx.beginPath(); tracePart(ctx, f.pts, k, X, Y); ctx.stroke();
+    if (f.twig && k > 0.6) { ctx.lineWidth = lw * 0.85; ctx.beginPath(); tracePart(ctx, f.twig, (k - 0.6) / 0.4, X, Y); ctx.stroke(); }
+  }
+  if (g >= 0.995) {
+    // the strike lands: a short ground flash under the tip
+    const e = sp.main[sp.main.length - 1], gx = X(e[0]), gy = Y(e[1]), s = side * 0.07;
+    ctx.lineWidth = lw * 1.15;
+    ctx.beginPath();
+    ctx.moveTo(gx - s * 1.5, gy + lw * 2); ctx.lineTo(gx + s * 1.5, gy + lw * 2);
+    ctx.moveTo(gx - s * 0.9, gy + lw * 6); ctx.lineTo(gx + s * 0.9, gy + lw * 6);
+    ctx.stroke();
+  }
+}
+function drawBolt(cv, key, g, o) {
   o = o || {};
   const w = cv.clientWidth || cv.width, h = cv.clientHeight || cv.height;
   if (!w || !h) return;
@@ -1600,34 +1729,34 @@ function drawCrystal(cv, key, g, o) {
   const ctx = cv.getContext('2d');
   ctx.setTransform(dpr, 0, 0, dpr, 0, 0);
   ctx.clearRect(0, 0, w, h);
-  const R = Math.min(w, h) / 2 * 0.88, sp = crystalSpec(hash32(String(key)));
+  const sp = boltSpec(hash32(String(key))), lw = clamp(Math.min(w, h) / 150, 1, 2.6);
   ctx.strokeStyle = getComputedStyle(cv).color;
-  ctx.lineCap = 'round'; ctx.lineJoin = 'round';
-  const lw = clamp(R / 80, 1, 2.2);
-  if (o.ghost !== false) { ctx.globalAlpha = 0.17; ctx.lineWidth = lw; strokeCrystal(ctx, sp, w / 2, h / 2, R, 1, -Math.PI / 2); }
-  ctx.globalAlpha = 1; ctx.lineWidth = lw * 1.3;
-  strokeCrystal(ctx, sp, w / 2, h / 2, R, clamp(g, 0, 1), -Math.PI / 2);
+  ctx.lineCap = 'round'; ctx.lineJoin = 'miter'; ctx.miterLimit = 3;
+  if (o.ghost !== false) { ctx.globalAlpha = 0.24; strokeBolt(ctx, sp, w, h, 1, lw * 0.8); }
+  ctx.globalAlpha = 1;
+  strokeBolt(ctx, sp, w, h, clamp(g, 0, 1), lw);
 }
 const calm = () => !S.profile.prefs.motion || (window.matchMedia && window.matchMedia('(prefers-reduced-motion: reduce)').matches);
-function growCrystal(cv, key, from, to, ms) {
-  if (calm()) return drawCrystal(cv, key, to);
+function growBolt(cv, key, from, to, ms) {
+  if (calm()) return drawBolt(cv, key, to);
   const t0 = performance.now();
   const step = t => {
     if (!cv.isConnected) return;
     const k = clamp((t - t0) / ms, 0, 1), e = 1 - Math.pow(1 - k, 3);
-    drawCrystal(cv, key, from + (to - from) * e);
+    drawBolt(cv, key, from + (to - from) * e);
     if (k < 1) requestAnimationFrame(step);
   };
   requestAnimationFrame(step);
 }
-function drawCrystals(root) {
-  $$('canvas[data-crystal]', root || document).forEach(cv => {
+function drawBolts(root) {
+  $$('canvas[data-bolt]', root || document).forEach(cv => {
     const g = parseFloat(cv.dataset.g) || 0;
-    if (cv.dataset.from != null && !cv._grown) { cv._grown = true; growCrystal(cv, cv.dataset.crystal, parseFloat(cv.dataset.from) || 0, g, 1400); }
-    else drawCrystal(cv, cv.dataset.crystal, g);
+    if (cv.dataset.from != null && !cv._grown) { cv._grown = true; growBolt(cv, cv.dataset.bolt, parseFloat(cv.dataset.from) || 0, g, 1400); }
+    else drawBolt(cv, cv.dataset.bolt, g);
   });
 }
 
+/* a right answer discharges: jagged arcs leap out from the answer and sparks scatter */
 const FX = (() => {
   let cv = null, ctx = null, parts = [], raf = 0, W = 0, H = 0, dpr = 1;
   function size() {
@@ -1650,32 +1779,30 @@ const FX = (() => {
     if (!ctx || W !== window.innerWidth || H !== window.innerHeight) size();
     const cs = getComputedStyle(document.documentElement), v = n => cs.getPropertyValue(n).trim();
     const cols = [v('--a1'), v('--a2'), v('--good'), v('--fg')];
-    const t0 = performance.now(), rot = Math.random() * Math.PI, R = 52 + 44 * power;
-    parts.push({ t0, life: 640 + 180 * power, draw(c, k) {
-      const e = 1 - Math.pow(1 - k, 3);
-      c.save(); c.translate(x, y); c.rotate(rot + e * 0.22);
-      c.globalAlpha = (1 - k) * 0.9; c.strokeStyle = cols[2]; c.lineWidth = 1.6; c.lineCap = 'round';
-      c.beginPath();
-      for (let i = 0; i < 6; i++) {
-        const a = i * Math.PI / 3, ca = Math.cos(a), sa = Math.sin(a), r1 = R * e;
-        c.moveTo(ca * r1 * 0.25, sa * r1 * 0.25); c.lineTo(ca * r1, sa * r1);
-        for (const f of [0.55, 0.8]) {
-          const bx = ca * r1 * f, by = sa * r1 * f, bl = R * 0.24 * e * (1.2 - f);
-          for (const s of [-1, 1]) { const b = a + s * Math.PI / 3; c.moveTo(bx, by); c.lineTo(bx + Math.cos(b) * bl, by + Math.sin(b) * bl); }
-        }
-      }
-      c.stroke(); c.restore();
-    } });
-    const n = Math.round(10 + 12 * power);
+    const t0 = performance.now(), arcs = Math.round(6 + 4 * power), R = 96 + 90 * power, turn = Math.random() * Math.PI * 2;
+    for (let i = 0; i < arcs; i++) {
+      const a = turn + i * (Math.PI * 2 / arcs) + (Math.random() - 0.5) * 0.7, len = R * (0.55 + Math.random() * 0.6);
+      const pts = jagPath(Math.random, x, y, x + Math.cos(a) * len, y + Math.sin(a) * len * 0.8, 0.55, 3);
+      const fork = Math.random() < 0.6 ? jagPath(Math.random, pts[4][0], pts[4][1], pts[4][0] + Math.cos(a + 0.7) * len * 0.4, pts[4][1] + Math.sin(a + 0.7) * len * 0.4, 0.5, 2) : null;
+      const col = cols[i % 2 ? 2 : 3], id = v => v;
+      parts.push({ t0: t0 + i * 14, life: 360 + 160 * power + Math.random() * 120, draw(c, k) {
+        const reach = Math.min(1, k / 0.32), flick = k < 0.75 ? 0.55 + 0.45 * Math.sin(k * 58 + i) : 1;
+        c.globalAlpha = Math.max(0, (1 - k * k) * flick);
+        c.strokeStyle = col; c.lineCap = 'round'; c.lineJoin = 'miter';
+        c.lineWidth = 2.6 * (1 - k * 0.5);
+        c.beginPath(); tracePart(c, pts, reach, id, id); c.stroke();
+        if (fork && reach > 0.5) { c.lineWidth = 1.2; c.beginPath(); tracePart(c, fork, (reach - 0.5) * 2, id, id); c.stroke(); }
+        c.globalAlpha = 1;
+      } });
+    }
+    const n = Math.round(10 + 14 * power);
     for (let i = 0; i < n; i++) {
-      const a = Math.random() * Math.PI * 2, sp = (60 + Math.random() * 150) * (0.7 + power * 0.5), sz = 3 + Math.random() * 5;
-      const col = cols[i % 4], spin = (Math.random() - 0.5) * 8, r0 = Math.random() * Math.PI;
-      parts.push({ t0: t0 + Math.random() * 60, life: 520 + Math.random() * 380, draw(c, k) {
-        const e = 1 - Math.pow(1 - k, 2.4), d = sp * e;
-        c.save(); c.translate(x + Math.cos(a) * d, y + Math.sin(a) * d + 60 * k * k); c.rotate(r0 + spin * k);
-        c.globalAlpha = 1 - k * k; c.fillStyle = col;
-        c.beginPath(); c.moveTo(0, -sz); c.lineTo(sz * 0.55, 0); c.lineTo(0, sz); c.lineTo(-sz * 0.55, 0); c.closePath(); c.fill();
-        c.restore();
+      const a = Math.random() * Math.PI * 2, sp = (70 + Math.random() * 170) * (0.7 + power * 0.5), sz = 4 + Math.random() * 7, col = cols[i % 4];
+      parts.push({ t0: t0 + Math.random() * 70, life: 420 + Math.random() * 380, draw(c, k) {
+        const e = 1 - Math.pow(1 - k, 2.4), d = sp * e, px = x + Math.cos(a) * d, py = y + Math.sin(a) * d + 70 * k * k, tail = sz * (1 - k);
+        c.globalAlpha = 1 - k * k; c.strokeStyle = col; c.lineWidth = 1.6; c.lineCap = 'round';
+        c.beginPath(); c.moveTo(px, py); c.lineTo(px - Math.cos(a) * tail, py - Math.sin(a) * tail); c.stroke();
+        c.globalAlpha = 1;
       } });
     }
     if (!raf) raf = requestAnimationFrame(tick);
@@ -1699,17 +1826,20 @@ function ping(ok) {
     actx = actx || new (window.AudioContext || window.webkitAudioContext)();
     if (actx.state === 'suspended') actx.resume();
     const t = actx.currentTime;
-    const tone = (f, d, g0, type, at) => {
+    const tone = (type, f0, f1, d, g0, at) => {
       const o = actx.createOscillator(), g = actx.createGain();
-      o.type = type; o.frequency.value = f;
+      o.type = type;
+      o.frequency.setValueAtTime(f0, t + at);
+      o.frequency.exponentialRampToValueAtTime(f1, t + at + d);
       g.gain.setValueAtTime(0.0001, t + at);
-      g.gain.linearRampToValueAtTime(g0, t + at + 0.008);
+      g.gain.linearRampToValueAtTime(g0, t + at + 0.006);
       g.gain.exponentialRampToValueAtTime(0.0001, t + at + d);
       o.connect(g); g.connect(actx.destination);
       o.start(t + at); o.stop(t + at + d + 0.03);
     };
-    if (ok) { tone(1318.5, 0.5, 0.07, 'sine', 0); tone(1975.5, 0.6, 0.045, 'sine', 0.06); tone(2637, 0.4, 0.02, 'sine', 0.11); }
-    else tone(185, 0.24, 0.05, 'triangle', 0);
+    // right: a quick zap that settles into a bright ring; wrong: a dull thud
+    if (ok) { tone('sawtooth', 2400, 320, 0.09, 0.035, 0); tone('sine', 1320, 1320, 0.42, 0.06, 0.05); tone('sine', 1980, 1980, 0.5, 0.03, 0.09); }
+    else tone('triangle', 190, 120, 0.22, 0.05, 0);
   } catch (e) {}
 }
 function buzz(ok) {
@@ -1718,16 +1848,20 @@ function buzz(ok) {
 }
 
 /* ---------- screens ---------- */
-const NAV = [['home', 'Home', 'home'], ['study', 'Study', 'bolt'], ['learn', 'Learn', 'book'], ['library', 'Library', 'stack'], ['prefs', 'Tune', 'tune']];
+const NAV = [['home', 'Home', 'home'], ['study', 'Study', 'play'], ['learn', 'Learn', 'book'], ['library', 'Library', 'stack'], ['prefs', 'Tune', 'tune']];
 const PRESETS = {
-  ember: ['#f0476a', '#6b4bff', 'Ember'], rime: ['#8fd8ff', '#5b6cff', 'Rime'], aurora: ['#35e0a8', '#2a8cff', 'Aurora'],
-  dusk: ['#ffb067', '#ff4d8d', 'Dusk'], lichen: ['#cde87a', '#2f9f7c', 'Lichen'], bone: ['#dfe6ee', '#8fa0b5', 'Bone']
+  storm: ['#7a6bff', '#31c4ff', 'Storm'], volt: ['#ffe04a', '#ff9a1f', 'Volt'], ember: ['#f0476a', '#6b4bff', 'Ember'],
+  aurora: ['#35e0a8', '#2a8cff', 'Aurora'], dusk: ['#ffb067', '#ff4d8d', 'Dusk'], bone: ['#dfe6ee', '#8fa0b5', 'Bone']
 };
+const SUB_COLORS = ['#f6c61e', '#ff8f8f', '#8a1c33', '#e3262e', '#2f7bf5', '#1fb565', '#ff8a1f', '#8b5cf6', '#14b8c4', '#e84fa3', '#94a3b8'];
 const UI = { route: 'home', sess: null, done: null, setup: null, lib: { mode: 'list', did: null, q: '' }, nd: null, build: null, learn: null, sheet: null, planBusy: null };
 const cardErr = {};
 
 const chip = (label, on, act, extra) => '<button class="chip" aria-pressed="' + (on ? 'true' : 'false') + '" data-act="' + act + '" ' + (extra || '') + '><span>' + label + '</span></button>';
 const fmtDay = k => { const [y, m, d] = k.split('-').map(Number); return new Date(y, m - 1, d).toLocaleDateString(undefined, { month: 'short', day: 'numeric' }); };
+const subName = id => id === '_' ? 'Unsorted' : S.subs[id] ? S.subs[id].name : 'All subjects';
+// decks in view: the current subject's, or every deck on the "All" tab
+const scopeIds = () => deckIds(curSub() || undefined);
 
 function ensureCards(did) {
   if (!did || S.cards[did] || !S.decks[did] || cardErr[did]) return;
@@ -1742,20 +1876,41 @@ function notices() {
   return out.map(t => '<div class="banner">' + ic('warn') + '<span>' + t + '</span></div>').join('');
 }
 function needDeck(title, text) {
-  return `<div class="page-h"><div><p class="lbl">${title}</p><h1>No deck yet</h1></div></div>
+  const sub = curSub();
+  return `<div class="page-h"><div><p class="lbl">${title}${sub ? ' \u00b7 ' + esc(subName(sub)) : ''}</p><h1>No deck yet</h1></div></div>
   <div class="card sec"><p class="note">${text}</p><div class="chips"><button class="btn pri" data-act="new-deck">${ic('plus')}New deck</button><button class="btn" data-act="sample">Try the sample deck</button></div></div>`;
+}
+
+/* ----- subject tabs ----- */
+function subTabsHTML() {
+  const cur = curSub(), flat = S.profile.prefs.flat, subs = subIds();
+  const tab = (id, name, c) => `<button class="stab${(id || null) === cur ? ' on' : ''}" data-act="sub" data-id="${id}" aria-pressed="${(id || null) === cur}" ${c ? 'style="' + subStyle(c, flat) + '"' : ''}>${c ? '<i></i>' : ''}<span>${esc(name)}</span></button>`;
+  let h = tab('', 'All', '');
+  for (const id of subs) h += tab(id, S.subs[id].name, S.subs[id].c);
+  if (subs.length && deckIds('_').length) h += tab('_', 'Unsorted', '');
+  return h + `<button class="stab add" data-act="sub-add" aria-label="Add a subject">${ic('plus')}${subs.length ? '' : '<span>Add a subject</span>'}</button>`;
+}
+function paintSubs() {
+  const h = subTabsHTML();
+  ['#subs-top', '#subs-bar'].forEach(sel => {
+    const el = $(sel);
+    if (!el || el._h === h) return;
+    el.innerHTML = h; el._h = h;
+    const on = $('.stab.on', el);
+    if (on && el.scrollWidth > el.clientWidth) el.scrollLeft = Math.max(0, on.offsetLeft - el.clientWidth / 2 + on.offsetWidth / 2);
+  });
 }
 
 /* ----- home ----- */
 function viewWelcome() {
   return `${notices()}<div class="home">
   <section class="hero">
-    <canvas class="hero-art" data-crystal="welcome" data-g="1"></canvas>
+    <canvas class="hero-art" data-bolt="welcome" data-g="1"></canvas>
     <div class="hero-in">
-      <p class="lbl">An empty library</p>
-      <h1 class="hero-name">Drop in your notes. Start answering.</h1>
-      <p class="hero-sub">Paste a page of notes or a table. Claude writes the questions and the first ones are ready in under a minute.</p>
-      <div class="hero-cta"><button class="btn go lg" data-act="new-deck">${ic('plus')}New deck</button><button class="btn lg" data-act="sample">Try the sample deck</button></div>
+      <p class="lbl">Nothing here yet</p>
+      <h1 class="hero-name">Add a subject. Drop in your notes.</h1>
+      <p class="hero-sub">Each subject gets its own colour and its own decks. Paste notes or a table into a deck and Claude writes the questions; the first ones are ready in under a minute.</p>
+      <div class="hero-cta"><button class="btn go lg" data-act="sub-add">${ic('plus')}Add a subject</button><button class="btn lg" data-act="new-deck">New deck</button><button class="btn lg" data-act="sample">Try the sample deck</button></div>
     </div>
   </section>
   <div class="how">
@@ -1770,12 +1925,12 @@ function goalCard() {
   const t = today(), goal = S.profile.goal || 30, p = clamp(t.n / goal, 0, 1), C = 2 * Math.PI * 30, lv = level(), ds = dayStreak();
   return `<section class="card goal" aria-label="Today">
     <div class="ring"><svg viewBox="0 0 76 76" aria-hidden="true"><circle class="r0" cx="38" cy="38" r="30"></circle><circle class="r1" cx="38" cy="38" r="30" stroke-dasharray="${C.toFixed(1)}" stroke-dashoffset="${(C * (1 - p)).toFixed(1)}"></circle></svg><b>${t.n}</b></div>
-    <div style="min-width:0"><p class="lbl">Today</p><p class="big">${t.n >= goal ? 'Goal met' : (goal - t.n) + ' to go'} <small>of ${goal}</small></p><p class="lbl">${ds ? plural(ds, 'day') + ' streak' : 'No streak yet'} \u00b7 best ${bestStreak()}</p></div>
+    <div style="min-width:0"><p class="lbl">Today, all subjects</p><p class="big">${t.n >= goal ? 'Goal met' : (goal - t.n) + ' to go'} <small>of ${goal}</small></p><p class="lbl">${ds ? plural(ds, 'day') + ' streak' : 'No streak yet'} \u00b7 best ${bestStreak()}</p></div>
     <div class="goal-lvl"><span class="lbl">Level ${lv.lv}</span><div class="meter"><i style="width:${pct(lv.p)}%"></i></div><span class="num mute" style="font-size:11px">${lv.xp - lv.lo}/${lv.hi - lv.lo} XP</span></div>
   </section>`;
 }
-function sessionsCard() {
-  const ss = S.profile.sessions.slice(0, 5);
+function sessionsCard(sub) {
+  const ss = S.profile.sessions.filter(s => !sub || (S.decks[s.did] && subOf(S.decks[s.did]) === sub)).slice(0, 5);
   return `<section class="card sec"><div class="sec-h"><h2>Last sessions</h2></div>${ss.length
     ? '<div class="rows">' + ss.map(s => `<div class="row"><span class="row-t">${esc(s.name)}</span><span class="row-s">${s.mode === 'quiz' ? 'Quiz' : 'Endless'} \u00b7 ${ago(s.t)}</span><span class="row-r"><span class="score" title="Right : wrong"><span class="g">${s.c | 0}</span><i>:</i><span class="b">${s.w | 0}</span></span></span></div>`).join('') + '</div>'
     : '<p class="note">Finished sessions land here, right answers against wrong.</p>'}</section>`;
@@ -1793,19 +1948,59 @@ function topicRows(list, drill) {
   return list.map(t => `<div class="topic"><span class="topic-n">${esc(t.topic)}</span><span class="num">${t.acc == null ? '\u2014' : pct(t.acc) + '%'}</span>${drill
     ? `<button class="btn sm" data-act="drill" data-topic="${esc(t.topic)}">Drill</button>` : `<span class="lbl">${t.n} q</span>`}<div class="meter"><i style="width:${pct(t.m)}%"></i></div></div>`).join('');
 }
+function subTotals(id) {
+  const ids = deckIds(id);
+  let total = 0, due = 0, sum = 0;
+  for (const d of ids) { const st = deckStats(d); total += st.total; due += st.due; sum += st.mastery * st.total; }
+  return { decks: ids.length, total, due, m: total ? sum / total : 0 };
+}
+function viewOverview() {
+  const flat = S.profile.prefs.flat, subs = subIds();
+  const card = (id, name, c) => {
+    const t = subTotals(id);
+    return `<button class="subcard${c ? '' : ' plain'}" data-act="sub" data-id="${id}" ${c ? 'style="' + subStyle(c, flat) + '"' : ''}>
+      <canvas data-bolt="sub-${id}" data-g="${t.m.toFixed(3)}"></canvas>
+      <span class="lbl">${plural(t.decks, 'deck')} \u00b7 ${t.total} q</span><b>${esc(name)}</b>
+      <span class="subcard-s"><span><em>${t.due}</em> due</span><span><em>${pct(t.m)}%</em> charged</span></span></button>`;
+  };
+  return `${notices()}<div class="home">
+  <section class="sec over">
+    <div class="page-h"><div><p class="lbl">All subjects</p><h1>Pick a subject</h1></div><button class="btn" data-act="sub-add">${ic('plus')}Add a subject</button></div>
+    <div class="subgrid">${subs.map(id => card(id, S.subs[id].name, S.subs[id].c)).join('')}${deckIds('_').length ? card('_', 'Unsorted', '') : ''}</div>
+  </section>
+  <aside class="side">${goalCard()}${sessionsCard()}${activityCard()}</aside>
+  </div>`;
+}
 function viewHome() {
-  const ids = deckIds();
-  if (!ids.length) return viewWelcome();
-  const did = activeDeck(), d = S.decks[did], st = deckStats(did);
+  const sub = curSub(), subs = subIds();
+  if (!sub && subs.length) return viewOverview();
+  const ids = deckIds(sub || undefined);
+  if (!ids.length && !subs.length) return viewWelcome();
+  const head = sub ? esc(subName(sub)) : 'All decks';
+  if (!ids.length) {
+    return `${notices()}<div class="home">
+    <section class="hero">
+      <canvas class="hero-art" data-bolt="sub-${sub}" data-g="0"></canvas>
+      <div class="hero-in">
+        <p class="lbl">No decks yet</p>
+        <h1 class="hero-name">${head}</h1>
+        <p class="hero-sub">Decks you make here stay in this subject. Paste notes or a table and Claude writes the questions.</p>
+        <div class="hero-cta"><button class="btn go lg" data-act="new-deck">${ic('plus')}New deck</button><button class="btn lg" data-act="sample">Try the sample deck</button>${S.subs[sub] ? `<button class="btn lg" data-act="sub-edit" data-id="${sub}">Edit subject</button>` : ''}</div>
+      </div>
+    </section>
+    <aside class="side">${goalCard()}${activityCard()}</aside>
+    </div>`;
+  }
+  const did = activeDeck(sub), d = S.decks[did], st = deckStats(did);
   ensureCards(did);
   const cta = st.due ? 'Continue \u00b7 ' + st.due + ' due' : st.fresh ? 'Continue \u00b7 ' + st.fresh + ' new' : 'Keep sharp';
   const weak = weakTopics(did), strong = strongTopics(did);
   return `${notices()}<div class="home">
   <section class="hero" aria-label="Active deck">
-    <canvas class="hero-art" data-crystal="${did}" data-g="${st.mastery.toFixed(3)}"></canvas>
+    <canvas class="hero-art" data-bolt="${did}" data-g="${st.mastery.toFixed(3)}"></canvas>
     <div class="hero-ghost" aria-hidden="true">${pct(st.mastery)}<i>%</i></div>
     <div class="hero-in">
-      <p class="lbl">${plural(st.total, 'question')} \u00b7 ${pct(st.mastery)}% crystallised</p>
+      <p class="lbl">${head} \u00b7 ${plural(st.total, 'question')} \u00b7 ${pct(st.mastery)}% charged</p>
       <h1 class="hero-name">${esc(d.name)}</h1>
       <dl class="stats">
         <div><dt>Recall</dt><dd>${st.acc == null ? '\u2014' : pct(st.acc) + '<small>%</small>'}</dd></div>
@@ -1820,13 +2015,13 @@ function viewHome() {
       </div>
     </div>
   </section>
-  <aside class="side">${goalCard()}${sessionsCard()}${activityCard()}</aside>
+  <aside class="side">${goalCard()}${sessionsCard(sub)}${activityCard()}</aside>
   <div class="duo">
     <section class="card sec"><div class="sec-h"><h2>Weak spots</h2><span class="lbl">Recall</span></div>${weak.length ? '<div>' + topicRows(weak, true) + '</div>' : '<p class="note">Nothing weak yet. Answer a few questions and the topics that trip you up surface here.</p>'}</section>
     <section class="card sec"><div class="sec-h"><h2>Strengths</h2><span class="lbl">Recall</span></div>${strong.length ? '<div>' + topicRows(strong, false) + '</div>' : '<p class="note">Topics you answer reliably collect here and get asked less often.</p>'}</section>
   </div>
-  <section class="sec decks"><div class="sec-h"><h2>Decks</h2><a class="link" href="#library">Manage</a></div>
-    <div class="deckgrid">${ids.map(id => { const s = deckStats(id); return `<button class="deck${id === did ? ' on' : ''}" data-act="set-active" data-did="${id}" aria-pressed="${id === did}"><canvas data-crystal="${id}" data-g="${s.mastery.toFixed(3)}"></canvas><b>${esc(S.decks[id].name)}</b><span class="lbl">${s.total} q \u00b7 ${pct(s.mastery)}%</span><div class="meter"><i style="width:${pct(s.mastery)}%"></i></div></button>`; }).join('')}
+  <section class="sec decks"><div class="sec-h"><h2>${sub ? head + ' decks' : 'Decks'}</h2><span class="chips">${S.subs[sub] ? `<button class="link" data-act="sub-edit" data-id="${sub}">Edit subject</button>` : ''}<a class="link" href="#library">Manage</a></span></div>
+    <div class="deckgrid">${ids.map(id => { const s = deckStats(id); return `<button class="deck${id === did ? ' on' : ''}" data-act="set-active" data-did="${id}" aria-pressed="${id === did}"><canvas data-bolt="${id}" data-g="${s.mastery.toFixed(3)}"></canvas><b>${esc(S.decks[id].name)}</b><span class="lbl">${s.total} q \u00b7 ${pct(s.mastery)}%</span><div class="meter"><i style="width:${pct(s.mastery)}%"></i></div></button>`; }).join('')}
     <button class="deck add" data-act="new-deck">${ic('plus')}<span class="lbl">New deck</span></button></div>
   </section>
   </div>`;
@@ -1840,10 +2035,10 @@ function setupPool(su) {
   return su.topics.length ? cards.filter(c => su.topics.includes(c.topic || 'General')) : cards;
 }
 function viewSetup() {
-  const ids = deckIds();
+  const ids = scopeIds();
   if (!ids.length) return needDeck('Study', 'Sessions draw on a deck. Make one from your notes, or try the sample.');
   const su = UI.setup || (UI.setup = { did: activeDeck(), topics: [] });
-  if (!S.decks[su.did]) { su.did = activeDeck(); su.topics = []; }
+  if (!ids.includes(su.did)) { su.did = activeDeck(); su.topics = []; }
   const cfg = S.profile.study, did = su.did, d = S.decks[did];
   ensureCards(did);
   const topics = S.cards[did] ? topicList(did) : [];
@@ -1852,8 +2047,8 @@ function viewSetup() {
   let due = 0, fresh = 0;
   if (pool) for (const c of pool) { const p = prog[c.id]; if (!p || !p[P.SEEN]) fresh++; else if (p[P.DUE] <= t) due++; }
   const focusNote = { adaptive: 'Due and shaky questions first, new ones fed in steadily, strong ones only when they are about to fade.', weak: 'Only what you get wrong or have not learned yet. Hard, and fast progress.', strong: 'A lap through what you already know, to keep it fast and certain.' }[cfg.focus];
-  const canTop = aiOK() && (d.srcs || []).length > 0;
-  return `<div class="page-h"><div><p class="lbl">Study</p><h1>Set up a session</h1></div></div>
+  const canTop = aiOK() && (d.srcs || []).length > 0, sub = curSub();
+  return `<div class="page-h"><div><p class="lbl">Study${sub ? ' \u00b7 ' + esc(subName(sub)) : ''}</p><h1>Set up a session</h1></div></div>
   <div class="setup">
     ${ids.length > 1 ? `<div class="sec"><span class="lbl">Deck</span><div class="chips">${ids.map(id => chip(esc(S.decks[id].name), id === did, 'st-deck', 'data-did="' + id + '"')).join('')}</div></div>` : ''}
     <div class="sec"><span class="lbl">Length</span><div class="chips">${chip('Endless', cfg.mode === 'endless', 'st-mode', 'data-mode="endless"')}${[10, 20, 40].map(n => chip('Quiz \u00b7 ' + n, cfg.mode === 'quiz' && cfg.len === n, 'st-mode', 'data-mode="quiz" data-len="' + n + '"')).join('')}</div></div>
@@ -1923,7 +2118,7 @@ function viewDone() {
   const r = UI.done, tot = r.c + r.w;
   return `<div class="fin">
     <section class="fin-top">
-      <canvas class="fin-art" data-crystal="${r.did}" data-g="${r.after.toFixed(3)}" data-from="${r.before.toFixed(3)}"></canvas>
+      <canvas class="fin-art" data-bolt="${r.did}" data-g="${r.after.toFixed(3)}" data-from="${r.before.toFixed(3)}"></canvas>
       <p class="lbl">Session complete \u00b7 ${esc(r.name)}</p>
       <h1 class="fin-score" aria-label="${r.c} right, ${r.w} wrong"><span class="g">${r.c}</span><i>:</i><span class="b">${r.w}</span></h1>
       <dl class="stats">
@@ -1932,7 +2127,7 @@ function viewDone() {
         <div><dt>XP</dt><dd>+${r.xp}</dd></div>
         <div><dt>Time</dt><dd style="font-size:20px;padding-top:6px">${dur(r.ms)}</dd></div>
       </dl>
-      <p class="note">Deck crystallised from ${pct(r.before)}% to <b>${pct(r.after)}%</b>.</p>
+      <p class="note">Deck charged from ${pct(r.before)}% to <b>${pct(r.after)}%</b>.</p>
       <div class="chips">
         <button class="btn pri lg" data-act="again">${ic('bolt')}Go again</button>
         ${r.misses.length ? '<button class="btn lg" data-act="drill-misses">Drill the misses</button>' : ''}
@@ -1946,11 +2141,11 @@ function viewDone() {
 
 /* ----- learn ----- */
 function viewLearn() {
-  const ids = deckIds();
+  const ids = scopeIds();
   if (!ids.length) return needDeck('Learn', 'Mr Claude teaches from your own notes. Add a deck first, with a syllabus if you have one.');
-  const did = UI.learn && S.decks[UI.learn] ? UI.learn : (UI.learn = activeDeck()), d = S.decks[did], plan = d.plan || [];
-  const busy = UI.planBusy === did;
-  return `<div class="page-h"><div><p class="lbl">Learn with Mr Claude</p><h1>${esc(d.name)}</h1></div></div>
+  const did = UI.learn && ids.includes(UI.learn) ? UI.learn : (UI.learn = activeDeck()), d = S.decks[did], plan = d.plan || [];
+  const busy = UI.planBusy === did, sub = curSub();
+  return `<div class="page-h"><div><p class="lbl">Learn with Mr Claude${sub ? ' \u00b7 ' + esc(subName(sub)) : ''}</p><h1>${esc(d.name)}</h1></div></div>
   ${ids.length > 1 ? `<div class="chips">${ids.map(id => chip(esc(S.decks[id].name), id === did, 'ln-deck', 'data-did="' + id + '"')).join('')}</div>` : ''}
   ${aiOK() ? '' : `<div class="banner">${ic('warn')}<span>Mr Claude is not available in this view, so lessons cannot run here. Open the page inside Claude and allow it to use Claude.</span></div>`}
   <section class="card sec"><div class="sec-h"><h2>Syllabus</h2><button class="btn sm" data-act="syl-edit">${d.syl ? 'Edit' : 'Add syllabus'}</button></div>
@@ -1967,15 +2162,15 @@ function viewLearn() {
 /* ----- library ----- */
 function viewLibrary() {
   const L = UI.lib;
-  if (L.mode === 'new') return viewNewDeck();
+  if (L.mode === 'new' && UI.nd) return viewNewDeck();
   if (L.mode === 'build' && UI.build && !UI.build.quiet && UI.build.did === L.did) return viewBuild();
   if (L.mode === 'build') L.mode = S.decks[L.did] ? 'deck' : 'list';
   if (L.mode === 'deck' && S.decks[L.did]) return viewDeck(L.did);
   L.mode = 'list';
-  const ids = deckIds();
-  return `<div class="page-h"><div><p class="lbl">Library</p><h1>Your decks</h1></div><button class="btn pri" data-act="new-deck">${ic('plus')}New deck</button></div>
-  ${ids.length ? `<div class="deckgrid">${ids.map(id => { const s = deckStats(id), d = S.decks[id]; return `<button class="deck" data-act="lib-open" data-did="${id}"><canvas data-crystal="${id}" data-g="${s.mastery.toFixed(3)}"></canvas><b>${esc(d.name)}</b><span class="lbl">${s.total} q \u00b7 ${plural((d.srcs || []).length, 'source')}</span><div class="meter"><i style="width:${pct(s.mastery)}%"></i></div></button>`; }).join('')}</div>`
-    : `<div class="card sec"><p class="note">A deck holds your material and the questions written from it. Start with a page of notes or a table.</p><div><button class="btn" data-act="sample">Try the sample deck</button></div></div>`}`;
+  const sub = curSub(), ids = scopeIds();
+  return `<div class="page-h"><div><p class="lbl">Library</p><h1>${sub ? esc(subName(sub)) + ' decks' : 'All decks'}</h1></div><button class="btn pri" data-act="new-deck">${ic('plus')}New deck</button></div>
+  ${ids.length ? `<div class="deckgrid">${ids.map(id => { const s = deckStats(id), d = S.decks[id], sj = S.subs[d.sub]; return `<button class="deck" data-act="lib-open" data-did="${id}"><canvas data-bolt="${id}" data-g="${s.mastery.toFixed(3)}"></canvas><b>${esc(d.name)}</b><span class="lbl">${!sub && sj ? esc(sj.name) + ' \u00b7 ' : ''}${s.total} q \u00b7 ${plural((d.srcs || []).length, 'source')}</span><div class="meter"><i style="width:${pct(s.mastery)}%"></i></div></button>`; }).join('')}</div>`
+    : `<div class="card sec"><p class="note">${sub ? 'No decks in this subject yet. ' : ''}A deck holds your material and the questions written from it. Start with a page of notes or a table.</p><div><button class="btn" data-act="sample">Try the sample deck</button></div></div>`}`;
 }
 function cardRows(did, list) {
   const prog = S.prog[did] || {};
@@ -1987,13 +2182,19 @@ function filterCards(did) {
   const q = norm(UI.lib.q || ''), cards = S.cards[did] || [];
   return q ? cards.filter(c => norm(c.q + ' ' + c.a + ' ' + (c.topic || '')).includes(q)) : cards;
 }
+function subChips(cur, act) {
+  const flat = S.profile.prefs.flat;
+  return subIds().map(id => `<button class="chip sub" aria-pressed="${id === cur}" data-act="${act}" data-id="${id}" style="${subStyle(S.subs[id].c, flat)}"><i></i><span>${esc(S.subs[id].name)}</span></button>`).join('') +
+    chip('No subject', !cur || !S.subs[cur], act, 'data-id=""');
+}
 function viewDeck(did) {
   const d = S.decks[did], st = deckStats(did), srcs = d.srcs || [];
   ensureCards(did);
   return `<div><button class="link" data-act="lib-back">\u2190 All decks</button></div>
-  <div class="page-h"><div class="grow"><p class="lbl">Deck${d.sample ? ' \u00b7 sample' : ''}</p><h1>${esc(d.name)}</h1></div>
+  <div class="page-h"><div class="grow"><p class="lbl">Deck${S.subs[d.sub] ? ' \u00b7 ' + esc(S.subs[d.sub].name) : ''}${d.sample ? ' \u00b7 sample' : ''}</p><h1>${esc(d.name)}</h1></div>
     <div class="chips"><button class="btn pri" data-act="deck-study" ${st.total ? '' : 'disabled'}>${ic('bolt')}Study</button><button class="btn" data-act="deck-rename">Rename</button></div></div>
   <dl class="stats card"><div><dt>Questions</dt><dd>${st.total}</dd></div><div><dt>Mastered</dt><dd>${st.mast}</dd></div><div><dt>Due</dt><dd>${st.due}</dd></div><div><dt>Recall</dt><dd>${st.acc == null ? '\u2014' : pct(st.acc) + '<small>%</small>'}</dd></div></dl>
+  ${subIds().length ? `<section class="card sec"><div class="sec-h"><h2>Subject</h2></div><div class="chips">${subChips(d.sub, 'deck-move')}</div></section>` : ''}
   <section class="card sec"><div class="sec-h"><h2>Material</h2><button class="btn sm" data-act="src-add">${ic('plus')}Add material</button></div>
     ${srcs.length ? `<div class="list">${srcs.map(s => `<div class="item"><span class="item-q">${esc(s.name)}</span><span class="item-a">${Number(s.chars).toLocaleString()} characters</span><span class="item-r"><button class="btn sm ghost" data-act="src-rm" data-id="${s.id}" aria-label="Remove source">${ic('trash')}</button></span></div>`).join('')}</div>` : '<p class="note">No source text on file. Add notes so Claude can write more questions and teach from them.</p>'}
     <p class="note">${d.syl ? 'Syllabus on file.' : 'No syllabus yet.'} <button class="link" data-act="syl-edit">${d.syl ? 'Edit syllabus' : 'Add a syllabus'}</button></p>
@@ -2010,7 +2211,8 @@ function viewNewDeck() {
   return `<div><button class="link" data-act="lib-back">\u2190 All decks</button></div>
   <div class="page-h"><div><p class="lbl">New deck</p><h1>Bring your material</h1></div></div>
   <div class="setup">
-    <label class="field"><span class="lbl">Deck name</span><input class="inp" id="nd-name" maxlength="60" placeholder="Cell biology, unit 2" value="${esc(nd.name || '')}"></label>
+    <div class="sec" id="nd-sub"></div>
+    <label class="field"><span class="lbl">Deck name</span><input class="inp" id="nd-name" maxlength="60" placeholder="Module 5, projectile motion" value="${esc(nd.name || '')}"></label>
     <div class="field drop" id="nd-drop"><label class="lbl" for="nd-text">Notes, tables, anything</label>
       <textarea class="ta" id="nd-text" placeholder="Paste notes or a table. Rows like  term [tab] definition  become cards instantly.">${esc(nd.text || '')}</textarea>
       <div class="chips" style="align-items:center"><button class="btn sm" data-act="nd-file">${ic('file')}Add files</button><span class="note">PDF, Word, text, CSV${AI.images ? ', photos of notes' : ''}. Or drop them here.</span></div>
@@ -2019,7 +2221,7 @@ function viewNewDeck() {
     </div>
     <div id="nd-detect"></div>
     <div class="field"><label class="lbl" for="nd-syl">Syllabus, optional</label>
-      <textarea class="ta" id="nd-syl" style="min-height:76px" placeholder="Paste the syllabus or learning outcomes. Questions and lessons will follow it.">${esc(nd.syl || '')}</textarea>
+      <textarea class="ta" id="nd-syl" style="min-height:76px" placeholder="Paste the syllabus dot points or learning outcomes. Questions and lessons will follow them.">${esc(nd.syl || '')}</textarea>
       <div><button class="btn sm" data-act="nd-sylfile">${ic('file')}Upload a syllabus file</button><input type="file" id="nd-sylfile" hidden accept="${FILE_ACCEPT}"></div>
     </div>
     <div class="sec" id="nd-count"></div>
@@ -2030,7 +2232,7 @@ function viewBuild() {
   const b = UI.build, d = S.decks[b.did];
   return `<div class="build">
     <p class="lbl">${esc(d ? d.name : '')}</p>
-    <canvas id="build-art" data-crystal="${b.did}" data-g="${clamp(b.got / Math.max(1, b.target), 0, 1).toFixed(3)}"></canvas>
+    <canvas id="build-art" data-bolt="${b.did}" data-g="${clamp(b.got / Math.max(1, b.target), 0, 1).toFixed(3)}"></canvas>
     <div class="build-n" id="build-n"></div>
     <p class="lbl" id="build-msg"></p>
     <div class="build-log" id="build-log"></div>
@@ -2040,25 +2242,30 @@ function viewBuild() {
 
 /* ----- tune ----- */
 function viewPrefs() {
-  const p = S.profile.prefs, goal = S.profile.goal || 30;
-  const syncLine = S.mode === 'cloud' ? 'Signed in. Decks, progress and settings follow your Claude account onto any device where you open this page.'
+  const p = S.profile.prefs, goal = S.profile.goal || 30, flat = p.flat, subs = subIds();
+  const syncLine = S.mode === 'cloud' ? 'Signed in. Subjects, decks, progress and settings follow your Claude account onto any device where you open this page.'
     : S.mode === 'local' ? 'Not connected to an account here. Everything is kept in this browser only.' : 'Connecting.';
   return `<div class="page-h"><div><p class="lbl">Tune</p><h1>Make it yours</h1></div></div>
   ${notices()}
   <div class="prefs">
-    <section class="pref"><h3>Colour</h3>
-      <div class="preview" id="pf-preview">${PRESETS[p.preset] ? PRESETS[p.preset][2] : 'Custom'}</div>
-      <div class="swatches">${Object.keys(PRESETS).map(k => `<button class="sw" data-act="pf-preset" data-k="${k}" aria-pressed="${p.preset === k}"><i style="background:linear-gradient(135deg,${PRESETS[k][0]},${p.flat ? PRESETS[k][0] : PRESETS[k][1]})"></i>${PRESETS[k][2]}</button>`).join('')}</div>
+    <section class="pref"><h3>Subjects</h3>
+      ${subs.length ? `<div class="list">${subs.map(id => { const s = S.subs[id]; return `<div class="item"><span class="item-q sj-row" style="${subStyle(s.c, flat)}"><i></i>${esc(s.name)}</span><span class="item-a">${plural(deckIds(id).length, 'deck')}</span><span class="item-r"><button class="btn sm" data-act="sub-edit" data-id="${id}">${ic('edit')}Edit</button></span></div>`; }).join('')}</div>` : '<p class="note">No subjects yet. Each one gets its own tab, colour and decks.</p>'}
+      <div><button class="btn sm" data-act="sub-add">${ic('plus')}Add a subject</button></div>
+    </section>
+    <section class="pref"><h3>Base colour</h3>
+      <p class="note">Each subject wears its own colour. This one is used on the All tab and for unsorted decks.</p>
+      <div class="swatches">${Object.keys(PRESETS).map(k => `<button class="sw" data-act="pf-preset" data-k="${k}" aria-pressed="${p.preset === k}"><i style="background:linear-gradient(135deg,${PRESETS[k][0]},${flat ? PRESETS[k][0] : PRESETS[k][1]})"></i>${PRESETS[k][2]}</button>`).join('')}</div>
       <div class="chips" style="align-items:center">
         <label class="color"><input type="color" id="pf-a1" value="${esc(p.a1)}">From</label>
-        <label class="color" ${p.flat ? 'hidden' : ''}><input type="color" id="pf-a2" value="${esc(p.a2)}">To</label>
-        ${chip('Gradient', !p.flat, 'pf-flat', 'data-v="0"')}${chip('Flat colour', p.flat, 'pf-flat', 'data-v="1"')}
+        <label class="color" ${flat ? 'hidden' : ''}><input type="color" id="pf-a2" value="${esc(p.a2)}">To</label>
+        ${chip('Gradient', !flat, 'pf-flat', 'data-v="0"')}${chip('Flat colour', flat, 'pf-flat', 'data-v="1"')}
       </div>
+      <p class="note">Gradient or flat applies everywhere, subjects included.</p>
     </section>
     <section class="pref"><h3>Light</h3><div class="chips">${chip('Match Claude', p.look === 'auto', 'pf-look', 'data-v="auto"')}${chip('Dark', p.look === 'dark', 'pf-look', 'data-v="dark"')}${chip('Light', p.look === 'light', 'pf-look', 'data-v="light"')}</div></section>
     <section class="pref"><h3>Rewards</h3>
       <div class="chips">${chip('Animation', p.motion, 'pf-toggle', 'data-k="motion"')}${chip('Sound', p.sound, 'pf-toggle', 'data-k="sound"')}${chip('Vibration', p.haptic, 'pf-toggle', 'data-k="haptic"')}</div>
-      <p class="note">A right answer blooms into a crystal, with an optional glass chime. Turn animation off for a still screen.</p></section>
+      <p class="note">A right answer discharges in a burst of lightning, with an optional zap. Turn animation off for a still screen.</p></section>
     <section class="pref"><h3>Daily goal</h3><div class="chips">${[10, 20, 30, 50, 100].map(n => chip(n + ' answers', goal === n, 'pf-goal', 'data-n="' + n + '"')).join('')}</div></section>
     <section class="pref"><h3>Marking typed answers</h3>
       <div class="chips">${chip('Strict', p.typo === 'strict', 'pf-typo', 'data-v="strict"')}${chip('Balanced', p.typo === 'balanced', 'pf-typo', 'data-v="balanced"')}${chip('Generous', p.typo === 'generous', 'pf-typo', 'data-v="generous"')}</div>
@@ -2079,11 +2286,9 @@ function paintSync() {
 function paintRail() {
   const lv = level(), rank = $('#rank');
   if (rank) {
-    rank.innerHTML = `<canvas data-crystal="rank-${S.uid || 'local'}" data-g="${clamp(0.12 + lv.lv / 24, 0, 1).toFixed(3)}"></canvas><div style="min-width:0"><b>Level ${lv.lv}</b><div class="meter"><i style="width:${pct(lv.p)}%"></i></div><span class="num">${lv.xp - lv.lo}/${lv.hi - lv.lo} XP</span></div>`;
-    drawCrystals(rank);
+    rank.innerHTML = `<canvas data-bolt="rank-${S.uid || 'local'}" data-g="${clamp(0.12 + lv.lv / 24, 0, 1).toFixed(3)}"></canvas><div style="min-width:0"><b>Level ${lv.lv}</b><div class="meter"><i style="width:${pct(lv.p)}%"></i></div><span class="num">${lv.xp - lv.lo}/${lv.hi - lv.lo} XP</span></div>`;
+    drawBolts(rank);
   }
-  const ts = $('#top-streak');
-  if (ts) ts.innerHTML = ic('spark') + '<b>' + dayStreak() + '</b>';
   const off = !aiOK();
   ['#rail-claude', '#top-claude'].forEach(sel => { const el = $(sel); if (el) el.disabled = S.ready && off; });
 }
@@ -2094,8 +2299,8 @@ function render() {
   if (!S.ready) return;
   const views = { home: viewHome, study: viewStudy, learn: viewLearn, library: viewLibrary, prefs: viewPrefs };
   v.innerHTML = (views[r] || viewHome)();
-  drawCrystals(v);
-  paintRail(); paintSync();
+  drawBolts(v);
+  paintSubs(); paintRail(); paintSync();
   if (r === 'library' && UI.lib.mode === 'build') paintBuild();
   if (r === 'library' && UI.lib.mode === 'new') paintNewDeck();
 }
@@ -2117,24 +2322,79 @@ function toast(msg, ms) {
 }
 let lookSig = '';
 function applyLook(force) {
-  const p = S.profile.prefs, r = document.documentElement;
-  const sig = [p.look, p.a1, p.a2, p.flat, p.motion, r.getAttribute('data-theme'), window.matchMedia && window.matchMedia('(prefers-color-scheme: dark)').matches].join('|');
+  const p = S.profile.prefs, r = document.documentElement, sj = S.subs[curSub()], c = sj && okHex(sj.c) ? sj.c : '';
+  const sig = [p.look, p.a1, p.a2, p.flat, p.motion, c, r.getAttribute('data-theme'), window.matchMedia && window.matchMedia('(prefers-color-scheme: dark)').matches].join('|');
   if (sig === lookSig && !force) return;
   lookSig = sig;
   r.classList.toggle('look-dark', p.look === 'dark');
   r.classList.toggle('look-light', p.look === 'light');
   r.classList.toggle('calm', !p.motion);
-  const a1 = p.a1, a2 = p.flat ? p.a1 : p.a2;
+  // the subject in view themes everything; the base colour covers the All tab and unsorted decks
+  const a1 = c || p.a1, a2 = p.flat ? a1 : (c ? partner(c) : p.a2), on = onColor(a1, a2);
   r.style.setProperty('--a1', a1);
   r.style.setProperty('--a2', a2);
-  const white = Math.min(contrast('#ffffff', a1), contrast('#ffffff', a2)), dark = Math.min(contrast('#0a0e14', a1), contrast('#0a0e14', a2));
-  const on = white >= 3 || white >= dark ? '#ffffff' : '#0a0e14';
   r.style.setProperty('--on', on);
   r.style.setProperty('--onx', on === '#ffffff' ? '#0a0e14' : '#ffffff');
   r.style.removeProperty('--ink');
   r.style.setProperty('--ink', readable(a1, getComputedStyle(r).getPropertyValue('--bg').trim() || '#0a0e14'));
   try { localStorage.setItem('rime:look', JSON.stringify({ look: p.look, a1: p.a1, a2: p.a2, flat: p.flat, motion: p.motion, preset: p.preset })); } catch (e) {}
-  drawCrystals();
+  drawBolts();
+}
+
+/* ----- subjects ----- */
+function selectSub(id) {
+  const want = id === '_' ? '_' : (S.subs[id] ? id : null);
+  if (UI.route === 'library' && UI.lib.mode === 'new' && UI.nd) {
+    // mid-form: keep what has been typed and just file the new deck under the tapped subject
+    UI.nd.sub = S.subs[want] ? want : '';
+    S.profile.sub = want; Store.touchActive(); applyLook(); paintSubs(); paintNewDeck();
+    return;
+  }
+  S.profile.sub = want;
+  Store.touchActive();
+  UI.setup = null; UI.learn = null;
+  if (UI.route === 'library') UI.lib = { mode: 'list', did: null, q: '' };
+  applyLook();
+  if (UI.route === 'prefs' || (UI.route === 'study' && UI.done && !UI.sess)) { UI.done = null; go('home'); }
+  else { render(); $('#main').scrollTop = 0; }
+}
+// keep the tab and theme on the subject of the deck being opened
+function followDeck(did) {
+  const s = subOf(S.decks[did]), want = s === '_' ? (subIds().length ? '_' : null) : s;
+  if ((S.profile.sub || null) === want) return;
+  S.profile.sub = want;
+  Store.touchActive();
+  applyLook();
+  paintSubs();
+}
+function subjectSheet(id) {
+  const s = id ? S.subs[id] : null;
+  let c = s && okHex(s.c) ? s.c : SUB_COLORS[subIds().length % SUB_COLORS.length];
+  const paint = () => {
+    $('#sj-sw').innerHTML = SUB_COLORS.map(x => `<button class="sw" data-act="sj-color" data-c="${x}" aria-pressed="${x === c}" aria-label="Colour ${x}"><i style="background:${x}"></i></button>`).join('');
+    $('#sj-c').value = c;
+    $('#sj-prev').style.cssText = subStyle(c, S.profile.prefs.flat);
+  };
+  const acts = [];
+  if (s) acts.push({ label: 'Delete', cls: 'danger', fn: () => confirmSheet('Delete ' + s.name + '?', 'The tab goes away. Its ' + plural(deckIds(id).length, 'deck') + ' and all progress are kept and move to Unsorted.', 'Delete subject', async () => { closeSheet(); await Store.deleteSub(id); applyLook(); render(); toast('Subject deleted'); }, true) });
+  acts.push({ label: 'Cancel', cls: 'ghost' }, { label: s ? 'Save' : 'Add subject', cls: 'pri', fn: () => {
+    const name = str($('#sj-name').value, 32);
+    if (!name) { toast('Give the subject a name.'); return false; }
+    closeSheet();
+    if (s) { s.name = name; s.c = c; Store.saveSub(id); applyLook(true); render(); return; }
+    const nid = mkid('j'), order = subIds().reduce((m, x) => Math.max(m, S.subs[x].o || 0), -1) + 1;
+    S.subs[nid] = { k: 'sub', id: nid, name, c, o: order, t: now() };
+    Store.saveSub(nid);
+    selectSub(nid);
+  } });
+  openSheet({
+    title: s ? 'Edit subject' : 'New subject',
+    html: `<div class="sj-prev" id="sj-prev">${ic('bolt')}<b id="sj-prev-name">${esc(s ? s.name : 'New subject')}</b></div>
+      <label class="field"><span class="lbl">Name</span><input class="inp" id="sj-name" maxlength="32" value="${esc(s ? s.name : '')}" placeholder="Chemistry"></label>
+      <div class="field"><span class="lbl">Colour</span><div class="swatches" id="sj-sw"></div><label class="color"><input type="color" id="sj-c">Any other colour</label></div>
+      <p class="note">The subject gets its own tab, and everything inside it takes this colour.</p>`,
+    onOpen: paint, setC(x) { if (okHex(x)) { c = x; paint(); } }, acts
+  });
 }
 
 /* ----- sheets ----- */
@@ -2185,7 +2445,8 @@ async function startSession(o) {
     n: 0, asked: new Set(), recent: [], again: new Map(), streak: 0, best: 0, right: 0, wrong: 0, close: 0, xp: 0,
     t0: now(), log: [], cur: null, newRun: 0, topups: 0, lastTop: 0, before: deckStats(o.did).mastery
   };
-  if (S.profile.active !== o.did) { S.profile.active = o.did; Store.touchActive(); }
+  setActive(o.did);
+  followDeck(o.did);
   Chat.quiz = null;
   if (Chat.open) closeChat();
   nextQuestion(true);
@@ -2433,7 +2694,7 @@ function paintBuild() {
   $('#build-msg').textContent = b.status === 'run' ? b.msg : b.status === 'done' ? plural(b.got, 'question') + ' ready' : b.status === 'stopped' ? 'Stopped at ' + b.got : b.msg;
   $('#build-log').innerHTML = b.recent.map(q => '<p>' + esc(q) + '</p>').join('');
   const cv = $('#build-art');
-  if (cv) drawCrystal(cv, b.did, clamp(b.got / Math.max(1, b.target), 0, 1));
+  if (cv) drawBolt(cv, b.did, clamp(b.got / Math.max(1, b.target), 0, 1));
   const run = b.status === 'run';
   $('#build-acts').innerHTML = `<button class="btn pri lg" data-act="build-study" ${b.got >= (run ? 4 : 1) ? '' : 'disabled'}>${ic('bolt')}Start studying</button>` +
     (run ? `<button class="btn lg" data-act="build-stop">${ic('stop')}Stop</button>` : `<button class="btn lg" data-act="build-done">Open deck</button>`);
@@ -2443,7 +2704,7 @@ function paintBuild() {
 const prettyName = f => { const s = String(f).replace(/\.[a-z0-9]{1,5}$/i, '').replace(/[_-]+/g, ' ').trim(); return (s.charAt(0).toUpperCase() + s.slice(1)).slice(0, 60); };
 const firstLine = t => { const l = String(t).split('\n').map(x => x.replace(/^[#>\-*\s|]+/, '').trim()).find(x => x.length > 2) || ''; return l.split(/[.:;|\t]/)[0].trim().slice(0, 40); };
 function openNewDeck() {
-  UI.nd = { name: '', text: '', syl: '', files: [], count: 30, mode: 'table', touched: false, header: false, headerSet: false, both: false, table: null, busy: 0 };
+  UI.nd = { sub: S.subs[curSub()] ? curSub() : '', name: '', text: '', syl: '', files: [], count: 30, mode: 'table', touched: false, header: false, headerSet: false, both: false, table: null, busy: 0 };
   UI.lib = { mode: 'new', did: null, q: '' };
   go('library');
 }
@@ -2457,6 +2718,8 @@ function ndTable() {
 function paintNewDeck() {
   const nd = UI.nd, box = $('#nd-detect');
   if (!nd || !box) return;
+  const sb = $('#nd-sub');
+  if (sb) sb.innerHTML = subIds().length ? '<span class="lbl">Subject</span><div class="chips">' + subChips(nd.sub, 'nd-sub') + '</div>' : '';
   $('#nd-filelist').innerHTML = nd.files.map((f, i) => `<span class="file${f.status === 'err' ? ' err' : ''}">${f.status === 'busy' ? '<span class="dots"><i></i><i></i><i></i></span>' : ''}<span>${esc(f.name)}${f.status === 'err' ? ' \u00b7 ' + esc(f.msg) : f.status === 'ok' ? ' \u00b7 ' + Number(f.text.length).toLocaleString() + ' chars' : ' \u00b7 reading'}</span><button data-act="nd-rm" data-i="${i}" aria-label="Remove ${esc(f.name)}">${ic('x')}</button></span>`).join('');
   const tb = nd.table = ndTable();
   if (tb && !nd.headerSet) nd.header = tb.header;
@@ -2501,8 +2764,7 @@ function newDeckRecord(name, extra) {
   const did = mkid('k');
   S.decks[did] = Object.assign({ k: 'deck', id: did, name: String(name).slice(0, 60), created: now(), ut: now(), cv: 0, count: 0, chunks: 0, srcs: [], syl: 0, sylParts: 0, plan: [], cursor: 0 }, extra || {});
   S.cards[did] = []; S.src[did] = { parts: [], syllabus: '' }; S.prog[did] = {};
-  S.profile.active = did;
-  Store.touchActive();
+  setActive(did);
   return did;
 }
 async function ndBuild() {
@@ -2515,7 +2777,8 @@ async function ndBuild() {
   if (eff === 'ai' && !aiOK()) { toast('Claude is not available here. Paste a table to make cards without it.', 4200); return; }
   $('#nd-go').disabled = true;
   const name = nd.name || (files[0] ? prettyName(files[0].name) : firstLine(nd.text)) || 'Untitled deck';
-  const did = newDeckRecord(name);
+  const did = newDeckRecord(name, S.subs[nd.sub] ? { sub: nd.sub } : null);
+  followDeck(did);
   UI.nd = null;
   try {
     await Store.saveDeck(did);
@@ -2537,30 +2800,31 @@ async function ndBuild() {
   }
 }
 const SAMPLE = {
-  name: 'Sample \u00b7 Snow and ice',
-  syllabus: '1. Frost and ice types: distinguish rime, hoarfrost and graupel by how they form.\n2. Phase changes: name the transitions between vapour, liquid and ice; define supercooling.\n3. Snow crystals: describe their symmetry and the people who first documented them.\n4. Snowpack: explain albedo and how snow becomes glacier ice.',
-  notes: 'Frost and ice types. Rime forms when supercooled fog or cloud droplets freeze on contact with a cold surface, building white, feathery ice on the windward side of objects. Hoarfrost forms differently: water vapour deposits directly as ice crystals with no liquid stage. Graupel, also called soft hail, is a snowflake that has been coated in rime until it becomes a soft pellet.\n\nPhase changes. Pure water freezes at 0 \u00b0C at standard pressure, but small droplets can stay liquid below that temperature; they are then called supercooled. Deposition is the change from vapour straight to solid; the reverse is sublimation. Water is densest at about 4 \u00b0C, which is why ice floats and lakes freeze from the top.\n\nSnow crystals. A snow crystal has sixfold (hexagonal) symmetry because of the way water molecules bond in ice. Wilson Bentley of Vermont photographed thousands of snow crystals from 1885 and popularised the idea that no two are alike. Ukichiro Nakaya grew the first artificial snow crystals in the 1930s and drew a diagram linking crystal shape to temperature and humidity.\n\nSnowpack. Albedo is the fraction of sunlight a surface reflects; fresh snow reflects roughly 80 to 90 percent. Wind carves hard snow into ridges called sastrugi. Granular snow that survives at least one melt season is called firn, the stage between snow and glacier ice.',
+  name: 'Sample \u00b7 Charge and lightning',
+  syllabus: '1. Units: state the SI units of charge, current, potential difference, resistance and power.\n2. Circuits: apply Ohm\u2019s law and P = VI; distinguish conductors from insulators.\n3. Lightning: describe how charge separates in a thundercloud and what happens during a strike.',
+  notes: 'Units. Electric charge is measured in coulombs (C). Current is the rate of flow of charge and is measured in amperes (A): one ampere is one coulomb per second. Potential difference, or voltage, is measured in volts (V), resistance in ohms, and power in watts.\n\nCircuits. Ohm\u2019s law says the voltage across a resistor equals the current through it multiplied by its resistance, V = IR. Electrical power equals voltage multiplied by current, P = VI. In a metal wire the charge carriers are electrons. A conductor lets charge flow easily; an insulator does not.\n\nLightning. Inside a thundercloud, collisions between ice particles separate charge, and negative charge gathers at the base of the cloud. When the electric field grows strong enough, a faint stepped leader works its way down. When it connects with the ground, a bright return stroke runs back up the channel and produces most of the light. The channel heats the air to about 30,000 degrees Celsius, roughly five times hotter than the surface of the Sun. The air expands explosively, and that shock wave is heard as thunder. Sound travels at about 343 metres per second in air at 20 degrees Celsius, so three seconds between flash and thunder is about one kilometre. Benjamin Franklin\u2019s kite experiment in 1752 showed that lightning is electrical, and he invented the lightning rod, a metal rod wired to earth that gives a strike a safe path to the ground.',
   cards: [
-    ['Supercooled fog droplets freezing onto a cold surface form which kind of ice?', 'Rime', ['rime ice'], ['Hoarfrost', 'Glaze', 'Graupel'], 'Frost types', 'Rime is frozen liquid droplets; hoarfrost comes straight from vapour.'],
-    ['Which frost forms when water vapour deposits directly as ice crystals, with no liquid stage?', 'Hoarfrost', ['hoar frost', 'hoar'], ['Rime', 'Graupel', 'Sleet'], 'Frost types', 'Hoarfrost skips the liquid stage entirely.'],
-    ['A snowflake coated in rime until it becomes a soft pellet is called what?', 'Graupel', ['soft hail', 'snow pellets'], ['Hail', 'Sleet', 'Firn'], 'Frost types', 'Graupel is a rimed snowflake, softer than true hail.'],
-    ['What is the name for the phase change from vapour straight to solid?', 'Deposition', ['desublimation'], ['Sublimation', 'Condensation', 'Freezing'], 'Phase changes', 'Deposition is the reverse of sublimation.'],
-    ['Liquid water that stays liquid below 0 \u00b0C is described as what?', 'Supercooled', ['super-cooled', 'supercooled water'], ['Superheated', 'Saturated', 'Sublimated'], 'Phase changes', 'Small, pure droplets can remain liquid well below freezing.'],
-    ['At what temperature, in \u00b0C, does pure water freeze at standard pressure?', '0', ['0 \u00b0C', 'zero'], ['4', '32', '-4'], 'Phase changes', 'The Celsius scale puts the freezing point of water at zero.'],
-    ['Water is densest at about what temperature, in \u00b0C?', '4', ['4 \u00b0C', 'four', '3.98'], ['0', '10', '-4'], 'Phase changes', 'Because water is densest at 4 \u00b0C, ice floats and lakes freeze from the top.'],
-    ['How many sides of symmetry does a typical snow crystal have?', 'Six', ['6', 'sixfold', 'hexagonal'], ['Four', 'Five', 'Eight'], 'Snow crystals', 'Water molecules bond into a hexagonal lattice.'],
-    ['Who photographed thousands of snow crystals from 1885 and popularised the idea that no two are alike?', 'Wilson Bentley', ['Bentley', 'Snowflake Bentley', 'Wilson A. Bentley'], ['Ukichiro Nakaya', 'Johannes Kepler', 'Robert Hooke'], 'Snow crystals', 'Bentley worked in Vermont with a microscope fitted to a camera.'],
-    ['Which scientist grew the first artificial snow crystals and linked crystal shape to temperature and humidity?', 'Ukichiro Nakaya', ['Nakaya'], ['Wilson Bentley', 'Johannes Kepler', 'Robert Hooke'], 'Snow crystals', 'Nakaya\u2019s diagram maps crystal form against temperature and humidity.'],
-    ['The fraction of sunlight a surface reflects is called its what?', 'Albedo', [], ['Emissivity', 'Opacity', 'Refraction'], 'Snowpack', 'Fresh snow has one of the highest albedos of any natural surface.'],
-    ['Roughly what percentage of sunlight does fresh snow reflect?', '80 to 90%', ['80-90%', '80%', '85%', '90%', '80 to 90 percent'], ['10 to 20%', '30 to 40%', '50 to 60%'], 'Snowpack', 'An albedo of 0.8 to 0.9 is why fresh snow is dazzling.'],
-    ['Ridges of hard snow carved by the wind are known as what?', 'Sastrugi', ['zastrugi'], ['Seracs', 'Moraines', 'Penitentes'], 'Snowpack', 'Sastrugi run parallel to the prevailing wind.'],
-    ['Granular snow that has survived at least one melt season, on its way to becoming glacier ice, is called what?', 'Firn', [], ['Graupel', 'Sastrugi', 'Rime'], 'Snowpack', 'Firn is the stage between seasonal snow and glacier ice.']
+    ['What is the SI unit of electric charge?', 'Coulomb', ['C', 'coulombs'], ['Ampere', 'Volt', 'Ohm'], 'Units', 'One coulomb is the charge moved by one ampere in one second.'],
+    ['What is the SI unit of electric current?', 'Ampere', ['amp', 'amps', 'A', 'amperes'], ['Coulomb', 'Volt', 'Watt'], 'Units', 'One ampere is one coulomb of charge per second.'],
+    ['What is the SI unit of resistance?', 'Ohm', ['ohms'], ['Volt', 'Watt', 'Farad'], 'Units', 'Resistance is voltage divided by current.'],
+    ['In what unit is electrical power measured?', 'Watt', ['watts', 'W'], ['Joule', 'Volt', 'Ampere'], 'Units', 'One watt is one joule per second.'],
+    ['Which law states that V = IR?', 'Ohm\u2019s law', ['Ohms law', 'Ohm law'], ['Coulomb\u2019s law', 'Faraday\u2019s law', 'Lenz\u2019s law'], 'Circuits', 'Voltage equals current multiplied by resistance.'],
+    ['Electrical power equals voltage multiplied by what?', 'Current', [], ['Resistance', 'Charge', 'Time'], 'Circuits', 'P = VI.'],
+    ['What particle carries charge through a metal wire?', 'Electron', ['electrons'], ['Proton', 'Neutron', 'Photon'], 'Circuits', 'Free electrons drift through the metal.'],
+    ['What is the term for a material that does not let charge flow easily?', 'Insulator', ['an insulator', 'insulators'], ['Conductor', 'Semiconductor', 'Electrolyte'], 'Circuits', 'Rubber, glass and dry air are insulators.'],
+    ['What sign of charge gathers at the base of a typical thundercloud?', 'Negative', ['negative charge'], ['Positive', 'Neutral', 'It alternates'], 'Lightning', 'Collisions between ice particles carry negative charge to the cloud base.'],
+    ['The bright stroke that runs back up the channel and makes most of a flash\u2019s light is called what?', 'Return stroke', ['the return stroke'], ['Stepped leader', 'Dart leader', 'Corona'], 'Lightning', 'It follows once the stepped leader connects with the ground.'],
+    ['A lightning channel heats the air to about how many degrees Celsius?', '30,000', ['30000', '30 000', 'about 30,000'], ['3,000', '300,000', '1,000'], 'Lightning', 'That is roughly five times hotter than the surface of the Sun.'],
+    ['The shock wave from air heated by lightning is heard as what?', 'Thunder', [], ['An echo', 'Static', 'A sonic boom'], 'Lightning', 'The air expands explosively along the channel.'],
+    ['Roughly how fast does sound travel in air at 20 \u00b0C, in metres per second?', '343', ['340', 'about 343', '343 m/s'], ['34', '3,430', '300,000'], 'Lightning', 'Three seconds between flash and thunder is about one kilometre.'],
+    ['Whose 1752 kite experiment showed that lightning is electrical?', 'Benjamin Franklin', ['Franklin', 'Ben Franklin'], ['Michael Faraday', 'Alessandro Volta', 'Nikola Tesla'], 'Lightning', 'He went on to invent the lightning rod.']
   ]
 };
 async function makeSample() {
   const have = deckIds().find(id => S.decks[id].sample);
-  if (have) { S.profile.active = have; Store.touchActive(); toast('The sample deck is already in your library.'); return go('home'); }
-  const did = newDeckRecord(SAMPLE.name, { sample: true });
+  if (have) { setActive(have); followDeck(have); toast('The sample deck is already in your library.'); return go('home'); }
+  const did = newDeckRecord(SAMPLE.name, Object.assign({ sample: true }, S.subs[curSub()] ? { sub: curSub() } : null));
+  followDeck(did);
   S.cards[did] = SAMPLE.cards.map(c => ({ id: mkid('c'), q: c[0], a: c[1], alts: c[2], d: c[3], topic: c[4], why: c[5] }));
   go('home');
   try {
@@ -2769,12 +3033,12 @@ function paintChat() {
   tools.hidden = th.kind !== 'lesson';
   tools.innerHTML = th.kind === 'lesson' ? `<button class="btn sm" data-act="lesson-quiz" ${Chat.busy ? 'disabled' : ''}>${ic('bolt')}Quiz me on this</button><button class="btn sm" data-act="lesson-done">${ic('check')}${l && l.st === 2 ? 'Done' : 'Mark as done'}</button>` : '';
   const msgs = th.turns.map(t => t.role === 'user' ? (t.auto ? '' : '<div class="msg me">' + esc(t.content) + '</div>') : '<div class="msg ai"><p class="lbl who">Mr Claude</p><div class="prose">' + md(t.content) + '</div></div>').join('');
-  const empty = `<div class="mc-empty"><canvas data-crystal="mr-claude" data-g="0.85"></canvas><p>${aiOK() ? (th.kind === 'quiz' ? 'Stuck on this one? Ask for a hint, or for the idea behind it. The answer stays hidden until you ask for it.' : 'Ask about anything in your notes. Answers draw on the material and syllabus in this deck.') : 'Mr Claude is not available in this view. Open the page inside Claude and allow it to use Claude.'}</p></div>`;
+  const empty = `<div class="mc-empty"><canvas data-bolt="mr-claude" data-g="0.85"></canvas><p>${aiOK() ? (th.kind === 'quiz' ? 'Stuck on this one? Ask for a hint, or for the idea behind it. The answer stays hidden until you ask for it.' : 'Ask about anything in your notes. Answers draw on the material and syllabus in this deck.') : 'Mr Claude is not available in this view. Open the page inside Claude and allow it to use Claude.'}</p></div>`;
   const log = $('#mc-log');
   log.innerHTML = (msgs || (Chat.busy ? '' : empty)) +
     (Chat.busy ? '<div class="msg ai"><p class="lbl who">Mr Claude</p><div class="prose" id="mc-live"><p class="checking"><span class="dots"><i></i><i></i><i></i></span>Thinking</p></div></div>' : '') +
     (Chat.err ? '<div class="msg err">' + esc(Chat.err) + '</div>' : '');
-  drawCrystals(log);
+  drawBolts(log);
   log.scrollTop = log.scrollHeight;
   $('#mc-quick').innerHTML = Chat.busy || !aiOK() ? '' : quickPrompts(th).map(q => `<button class="chip" data-act="chat-quick" data-q="${esc(q)}"><span>${esc(q)}</span></button>`).join('');
   const send = $('#mc-send');
@@ -2831,7 +3095,7 @@ const ACT = {
   'chat-quick': el => chatSend(el.dataset.q),
   'new-deck': () => openNewDeck(),
   sample: () => makeSample(),
-  'set-active': el => { S.profile.active = el.dataset.did; Store.touchActive(); render(); $('#main').scrollTop = 0; },
+  'set-active': el => { setActive(el.dataset.did); render(); $('#main').scrollTop = 0; },
   'quick-start': () => startSession({ did: activeDeck() }),
   drill: el => startSession({ did: activeDeck(), topics: [el.dataset.topic], mode: 'endless', focus: 'weak' }),
   'retry-cards': el => { delete cardErr[el.dataset.did]; render(); },
@@ -2865,7 +3129,13 @@ const ACT = {
   'lesson-done': () => { const th = Chat.thread, l = lessonOf(th); if (!l) return; l.st = 2; Store.saveDeck(th.did); toast('Lesson marked as done'); closeChat(); },
   'ask-deck': () => openChat(defaultThread()),
 
-  'lib-open': el => { UI.lib = { mode: 'deck', did: el.dataset.did, q: '' }; render(); $('#main').scrollTop = 0; },
+  'lib-open': el => { UI.lib = { mode: 'deck', did: el.dataset.did, q: '' }; followDeck(el.dataset.did); render(); $('#main').scrollTop = 0; },
+  sub: el => selectSub(el.dataset.id),
+  'sub-add': () => subjectSheet(null),
+  'sub-edit': el => subjectSheet(el.dataset.id),
+  'sj-color': el => { if (UI.sheet && UI.sheet.setC) UI.sheet.setC(el.dataset.c); },
+  'nd-sub': el => { const id = el.dataset.id; UI.nd.sub = id; S.profile.sub = id || null; Store.touchActive(); applyLook(); paintSubs(); paintNewDeck(); },
+  'deck-move': el => { const did = UI.lib.did, d = S.decks[did], id = el.dataset.id; if (!d) return; if (S.subs[id]) d.sub = id; else delete d.sub; Store.saveDeck(did); setActive(did); followDeck(did); render(); toast(S.subs[id] ? 'Moved to ' + S.subs[id].name : 'Moved out of its subject'); },
   'lib-back': () => { UI.lib = { mode: 'list', did: null, q: '' }; UI.nd = null; render(); $('#main').scrollTop = 0; },
   'nd-file': () => $('#nd-files').click(),
   'nd-sylfile': () => $('#nd-sylfile').click(),
@@ -2952,6 +3222,8 @@ document.addEventListener('input', e => {
   else if (t.id === 'nd-text') ndDetectSoon();
   else if (t.id === 'mc-in') { t.style.height = 'auto'; t.style.height = Math.min(136, t.scrollHeight + 2) + 'px'; }
   else if (t.id === 'pf-a1' || t.id === 'pf-a2') { const p = S.profile.prefs; p[t.id.slice(3)] = t.value; p.preset = 'custom'; applyLook(); saveLookSoon(); }
+  else if (t.id === 'sj-name') { const el = $('#sj-prev-name'); if (el) el.textContent = t.value.trim() || 'New subject'; }
+  else if (t.id === 'sj-c') { if (UI.sheet && UI.sheet.setC) UI.sheet.setC(t.value); }
 });
 document.addEventListener('change', e => {
   const t = e.target;
@@ -2974,7 +3246,7 @@ document.addEventListener('drop', e => {
   if (e.dataTransfer && e.dataTransfer.files && e.dataTransfer.files.length) ndAddFiles(e.dataTransfer.files);
 });
 window.addEventListener('hashchange', onRoute);
-window.addEventListener('resize', debounce(() => drawCrystals(), 180));
+window.addEventListener('resize', debounce(() => drawBolts(), 180));
 document.addEventListener('visibilitychange', () => { if (document.hidden) Store.flush(); });
 window.addEventListener('pagehide', () => Store.flush());
 
@@ -2993,7 +3265,7 @@ function boot() {
   $('#mc-send').innerHTML = ic('up');
   try { const c = JSON.parse(localStorage.getItem('rime:look') || 'null'); if (c && typeof c === 'object') Object.assign(S.profile.prefs, c); } catch (e) {}
   applyLook(true);
-  drawCrystals();
+  drawBolts();
   let shown = false;
   onStore = (kind, code) => {
     if (kind === 'sync') return paintSync();
@@ -3001,7 +3273,7 @@ function boot() {
     applyLook();
     if (S.ready && !shown) { shown = true; render(); }
     else if (kind !== 'same') softRender();   // an echo of our own save changes nothing on screen
-    paintRail(); paintSync();
+    paintSubs(); paintRail(); paintSync();
   };
   const r = (location.hash || '#home').slice(1);
   UI.route = NAV.some(n => n[0] === r) ? r : 'home';

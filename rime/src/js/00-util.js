@@ -84,6 +84,37 @@ function readable(c, bg, min = 4.2) {
   return out;
 }
 
+function hexHsl(hex) {
+  const [r, g, b] = hexRgb(hex).map(v => v / 255), mx = Math.max(r, g, b), mn = Math.min(r, g, b), l = (mx + mn) / 2, d = mx - mn;
+  let h = 0, sat = 0;
+  if (d) {
+    sat = d / (1 - Math.abs(2 * l - 1));
+    h = mx === r ? ((g - b) / d) % 6 : mx === g ? (b - r) / d + 2 : (r - g) / d + 4;
+    h = (h * 60 + 360) % 360;
+  }
+  return [h, sat, l];
+}
+function hslHex(h, sat, l) {
+  const c = (1 - Math.abs(2 * l - 1)) * sat, x = c * (1 - Math.abs((h / 60) % 2 - 1)), m = l - c / 2;
+  const [r, g, b] = h < 60 ? [c, x, 0] : h < 120 ? [x, c, 0] : h < 180 ? [0, c, x] : h < 240 ? [0, x, c] : h < 300 ? [x, 0, c] : [c, 0, x];
+  return rgbHex([(r + m) * 255, (g + m) * 255, (b + m) * 255]);
+}
+/* the far stop of a subject's gradient: a deeper neighbour of its colour (warm hues lean warmer, cool hues cooler) */
+function partner(c) {
+  const [h, sat, l] = hexHsl(c), warm = h < 70 || h >= 320;
+  return hslHex((h + (warm ? -20 : 24) + 360) % 360, clamp(sat, 0, 1), clamp(l * 0.8, 0.14, 0.8));
+}
+function onColor(a, b) {
+  const w = Math.min(contrast('#ffffff', a), contrast('#ffffff', b)), d = Math.min(contrast('#0a0e14', a), contrast('#0a0e14', b));
+  return w >= 3 || w >= d ? '#ffffff' : '#0a0e14';
+}
+const okHex = c => /^#[0-9a-f]{6}$/i.test(String(c || ''));
+function subStyle(c, flat) {
+  if (!okHex(c)) return '';
+  const c2 = flat ? c : partner(c);
+  return '--c:' + c + ';--c2:' + c2 + ';--co:' + onColor(c, c2);
+}
+
 /* a small, escape-first Markdown renderer for Mr Claude's replies */
 function mdInline(s) {
   return s
@@ -159,7 +190,8 @@ const ICONS = {
   trash: '<path d="M5 7h14M10 7V4.5h4V7M7 7l.8 12.5h8.4L17 7"/>',
   edit: '<path d="m4.5 19.5 1-4L16 5l3 3L8.5 18.5z"/>',
   file: '<path d="M7 3.5h7l4 4V20.5H7z"/><path d="M14 3.5v4h4"/>',
-  spark: '<path d="M12 3v18M4.2 7.5l15.6 9M19.8 7.5 4.2 16.5"/>',
+  spark: '<path d="M13.2 3 5 13.2h6L9.8 21 19 10.6h-6.2z"/>',
+  play: '<path d="M7.5 4.8v14.4l11.5-7.2z"/>',
   warn: '<path d="M12 4 3 19.5h18z"/><path d="M12 10v4.5M12 17v.2"/>',
   dot: '<circle cx="12" cy="12" r="2.4"/>'
 };

@@ -158,7 +158,7 @@ async function chatRules(th, query) {
   let src = { parts: [], syllabus: '' };
   if (d) { try { src = await Store.loadSrc(th.did); } catch (e) {} }
   const L = [
-    'You are Mr Claude, a patient, exacting teacher inside a study app called Rime. You are talking with one student.',
+    'You are Mr Claude, a patient, exacting teacher inside a study app. You are talking with one student.',
     '',
     'How you teach:',
     '- Teach from the student’s own MATERIAL and SYLLABUS below whenever they cover the point. If you go beyond them, say so in a few words.',
