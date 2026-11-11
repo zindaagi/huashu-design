@@ -154,7 +154,33 @@ const FX = (() => {
     }
     if (!raf) raf = requestAnimationFrame(tick);
   }
-  return { burst };
+  /* one thin bolt from the top of the screen down to a point, with a faint wash of the subject's colour */
+  function strike(x, y) {
+    if (calm()) return;
+    if (!ctx || W !== window.innerWidth || H !== window.innerHeight) size();
+    const cs = getComputedStyle(document.documentElement), col = cs.getPropertyValue('--a1').trim(), white = cs.getPropertyValue('--fg').trim();
+    const id = v => v, t0 = performance.now(), pts = jagPath(Math.random, x + (Math.random() - 0.5) * 160, -12, x, y, 0.5, 4);
+    const fork = jagPath(Math.random, pts[9][0], pts[9][1], pts[9][0] + (Math.random() < 0.5 ? -1 : 1) * (40 + Math.random() * 60), pts[9][1] + 50 + Math.random() * 50, 0.5, 2);
+    parts.push({ t0, life: 460, draw(c, k) {
+      const reach = Math.min(1, k / 0.25), flick = k < 0.7 ? 0.55 + 0.45 * Math.sin(k * 60) : 1, a = Math.max(0, 1 - k * k) * flick;
+      c.globalAlpha = Math.max(0, 0.07 * (1 - k * 2.4)); c.fillStyle = col; c.fillRect(0, 0, W, H);
+      c.lineCap = 'round'; c.lineJoin = 'miter';
+      c.globalAlpha = a * 0.5; c.strokeStyle = col; c.lineWidth = 5; c.beginPath(); tracePart(c, pts, reach, id, id); c.stroke();
+      c.globalAlpha = a; c.strokeStyle = white; c.lineWidth = 1.7; c.beginPath(); tracePart(c, pts, reach, id, id); c.stroke();
+      if (reach > 0.55) { c.lineWidth = 1.1; c.beginPath(); tracePart(c, fork, (reach - 0.55) / 0.45, id, id); c.stroke(); }
+      c.globalAlpha = 1;
+    } });
+    for (let i = 0; i < 9; i++) {
+      const an = -Math.PI * Math.random(), sp = 40 + Math.random() * 90, sz = 4 + Math.random() * 5;
+      parts.push({ t0: t0 + 110, life: 380 + Math.random() * 220, draw(c, k) {
+        const d = sp * (1 - Math.pow(1 - k, 2.2)), px = x + Math.cos(an) * d, py = y + Math.sin(an) * d + 50 * k * k;
+        c.globalAlpha = 1 - k * k; c.strokeStyle = i % 2 ? col : white; c.lineWidth = 1.5; c.lineCap = 'round';
+        c.beginPath(); c.moveTo(px, py); c.lineTo(px - Math.cos(an) * sz * (1 - k), py - Math.sin(an) * sz * (1 - k)); c.stroke(); c.globalAlpha = 1;
+      } });
+    }
+    if (!raf) raf = requestAnimationFrame(tick);
+  }
+  return { burst, strike };
 })();
 function xpFloat(x, y, text) {
   if (calm()) return;

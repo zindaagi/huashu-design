@@ -192,6 +192,7 @@ const ICONS = {
   file: '<path d="M7 3.5h7l4 4V20.5H7z"/><path d="M14 3.5v4h4"/>',
   spark: '<path d="M13.2 3 5 13.2h6L9.8 21 19 10.6h-6.2z"/>',
   play: '<path d="M7.5 4.8v14.4l11.5-7.2z"/>',
+  paper: '<path d="M6.5 3.5h8l3.5 3.5v13.5h-11.5z"/><path d="M14.5 3.5V7H18M9 11h6M9 14.5h6M9 18h3.5"/>',
   warn: '<path d="M12 4 3 19.5h18z"/><path d="M12 10v4.5M12 17v.2"/>',
   dot: '<circle cx="12" cy="12" r="2.4"/>'
 };

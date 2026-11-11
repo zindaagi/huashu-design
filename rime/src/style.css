@@ -37,8 +37,8 @@ svg{display:block}
 .top{display:flex;align-items:center;gap:10px;padding-block:10px;padding-left:max(16px,env(safe-area-inset-left,0px));padding-right:max(16px,env(safe-area-inset-right,0px));border-bottom:1px solid var(--line);background:var(--bg)}
 .main{min-height:0;overflow-y:auto;overflow-x:hidden;overscroll-behavior:contain;-webkit-overflow-scrolling:touch}
 .wrap{max-width:1180px;margin:0 auto;padding-block:20px 44px;padding-left:max(16px,env(safe-area-inset-left,0px));padding-right:max(16px,env(safe-area-inset-right,0px));display:flex;flex-direction:column;gap:22px}
-.tabs{display:grid;grid-template-columns:repeat(5,minmax(0,1fr));border-top:1px solid var(--line);background:var(--panel);padding-left:max(4px,env(safe-area-inset-left,0px));padding-right:max(4px,env(safe-area-inset-right,0px))}
-.tabs a{display:flex;flex-direction:column;align-items:center;justify-content:center;gap:5px;height:58px;color:var(--mute);text-decoration:none;font:500 9.5px/1 var(--fm);letter-spacing:.12em;text-transform:uppercase}
+.tabs{display:grid;grid-template-columns:repeat(6,minmax(0,1fr));border-top:1px solid var(--line);background:var(--panel);padding-left:max(4px,env(safe-area-inset-left,0px));padding-right:max(4px,env(safe-area-inset-right,0px))}
+.tabs a{display:flex;flex-direction:column;align-items:center;justify-content:center;gap:5px;height:58px;color:var(--mute);text-decoration:none;font:500 9px/1 var(--fm);letter-spacing:.08em;text-transform:uppercase}
 .tabs a .i{width:20px;height:20px}
 .tabs a[aria-current="page"]{color:var(--fg)}
 .tabs a[aria-current="page"] .i{color:var(--ink)}
@@ -391,6 +391,41 @@ svg{display:block}
 @keyframes facepop{0%{transform:scale(1)}35%{transform:scale(1.2) rotate(-5deg)}70%{transform:scale(.96) rotate(2deg)}100%{transform:scale(1)}}
 @keyframes bub{from{opacity:0;transform:translateY(8px) scale(.96)}}
 
+/* ---------- papers and exam mode ---------- */
+.sec-h:has(>.sel){flex-wrap:wrap;align-items:center}
+.sec-h:has(>.sel) h2{white-space:nowrap}
+.sec-h>.sel{flex:1 1 180px;max-width:260px;min-width:0}
+.pgrid{display:grid;grid-template-columns:repeat(auto-fill,minmax(min(100%,300px),1fr));gap:12px}
+.pcard{display:flex;flex-direction:column;gap:12px;min-width:0;padding:14px;background:var(--panel);border:1px solid var(--line);border-radius:var(--r)}
+.pcard-t{display:flex;flex-direction:column;gap:6px;min-width:0}
+.pcard-t b{font:700 22px/1 var(--fd);text-transform:uppercase;letter-spacing:.03em;overflow-wrap:anywhere}
+.pcard-a{display:flex;flex-wrap:wrap;gap:8px}
+.sel{width:auto;max-width:100%;padding:8px 10px;font-size:14px}
+.item.wide .item-r{flex-wrap:wrap;justify-content:flex-end}
+@media (max-width:620px){.item.wide{grid-template-columns:minmax(0,1fr)}.item.wide .item-r{grid-row:auto;grid-column:1;justify-content:flex-start}}
+.stim{max-height:280px;overflow:auto;padding:10px 12px;background:var(--sunk);border:1px solid var(--line);border-radius:var(--r);font-size:14.5px}
+.xq-text{font-size:17px;line-height:1.5;font-weight:500}
+.xq.struck{animation:struck .8s ease-out}
+.xa{display:flex;flex-direction:column;gap:10px}
+.xa .ta{min-height:132px}
+.opt.sel{border-color:var(--fg2)}
+.tagc{display:inline-block;max-width:100%;padding:4px 8px;border:1px solid var(--line2);border-radius:4px;font-size:12.5px;line-height:1.3;overflow-wrap:anywhere}
+.tagc.ok{border-color:color-mix(in srgb,var(--good) 60%,transparent);color:var(--good)}
+.tagc.no{border-color:color-mix(in srgb,var(--bad) 60%,transparent);color:var(--bad)}
+.x-texts{display:flex;flex-direction:column;gap:8px;margin-block:4px}
+details.more{padding-top:8px;border-top:1px solid var(--line)}
+details.more summary{cursor:pointer;font:500 11px/1.4 var(--fm);letter-spacing:.12em;text-transform:uppercase;color:var(--fg2)}
+details.more>*:not(summary){margin-top:8px}
+.pageimg{display:block;max-width:100%;border:1px solid var(--line2);border-radius:var(--r);background:#fff}
+/* the ambient backdrop: two slow washes of the subject's colours and, now and then, far-off lightning */
+#amb{position:fixed;inset:-6%;z-index:0;pointer-events:none;opacity:0;transition:opacity 1.1s ease;background:radial-gradient(58% 48% at 16% 10%,color-mix(in srgb,var(--a1) 30%,transparent),transparent 70%),radial-gradient(54% 54% at 88% 90%,color-mix(in srgb,var(--a2) 26%,transparent),transparent 70%)}
+#amb::after{content:"";position:absolute;inset:0;background:linear-gradient(180deg,color-mix(in srgb,var(--a1) 22%,transparent),transparent 46%);opacity:0}
+:root.ambient #amb{opacity:1;animation:ambdrift 28s ease-in-out infinite alternate}
+:root.ambient #amb::after{animation:ambflash 14s linear infinite}
+@keyframes ambdrift{from{transform:translate3d(-2%,-1%,0) scale(1.02)}to{transform:translate3d(2%,2%,0) scale(1.1)}}
+@keyframes ambflash{0%,92%,100%{opacity:0}93%{opacity:.55}94.2%{opacity:.08}95.6%{opacity:.36}97.5%{opacity:0}}
+@keyframes struck{0%{box-shadow:0 0 0 1px var(--ink),0 0 38px -6px var(--a1)}100%{box-shadow:0 0 0 0 transparent,0 0 0 0 transparent}}
+
 /* ---------- overlays ---------- */
 .sheet-wrap{position:fixed;inset:0;z-index:50;display:flex;align-items:flex-end;justify-content:center;background:var(--scrim);padding-top:env(safe-area-inset-top,0px)}
 .sheet{width:min(580px,100%);max-height:94%;overflow-y:auto;display:flex;flex-direction:column;gap:14px;background:var(--panel);border:1px solid var(--line2);border-bottom:0;border-radius:10px 10px 0 0;padding-block:20px calc(20px + env(safe-area-inset-bottom,0px));padding-left:max(16px,env(safe-area-inset-left,0px));padding-right:max(16px,env(safe-area-inset-right,0px));animation:up .18s ease-out}
@@ -404,7 +439,15 @@ svg{display:block}
 /* ---------- motion: colour morph, 3D tilt and glare, cursor glow, hover, entrances ---------- */
 @property --a1{syntax:'<color>';inherits:true;initial-value:#7a6bff}
 @property --a2{syntax:'<color>';inherits:true;initial-value:#31c4ff}
+@property --bg{syntax:'<color>';inherits:true;initial-value:#0a0e14}
+@property --panel{syntax:'<color>';inherits:true;initial-value:#0f151e}
+@property --raise{syntax:'<color>';inherits:true;initial-value:#161e2a}
+@property --sunk{syntax:'<color>';inherits:true;initial-value:#06090d}
+@property --line{syntax:'<color>';inherits:true;initial-value:#1d2836}
+@property --line2{syntax:'<color>';inherits:true;initial-value:#2c3b50}
 :root{transition:--a1 .5s ease,--a2 .5s ease}
+/* surfaces only glide while exam mode is arriving or leaving, so switching light and dark stays immediate */
+:root.amb-t{transition:--a1 .5s ease,--a2 .5s ease,--bg .9s ease,--panel .9s ease,--raise .9s ease,--sunk .9s ease,--line .9s ease,--line2 .9s ease}
 :root.calm{transition:none}
 .app{position:relative;z-index:1}
 #glow{position:fixed;left:0;top:0;z-index:0;width:680px;height:680px;margin:-340px 0 0 -340px;border-radius:50%;pointer-events:none;background:radial-gradient(circle,color-mix(in srgb,var(--a1) 16%,transparent),transparent 66%);opacity:0;transform:translate3d(-999px,-999px,0);transition:opacity .5s;will-change:transform}

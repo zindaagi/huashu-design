@@ -1,5 +1,5 @@
 /* ---------- screens ---------- */
-const NAV = [['home', 'Home', 'home'], ['study', 'Study', 'play'], ['learn', 'Learn', 'book'], ['library', 'Library', 'stack'], ['prefs', 'Tune', 'tune']];
+const NAV = [['home', 'Home', 'home'], ['study', 'Study', 'play'], ['papers', 'Papers', 'paper'], ['learn', 'Learn', 'book'], ['library', 'Library', 'stack'], ['prefs', 'Tune', 'tune']];
 const PRESETS = {
   storm: ['#7a6bff', '#31c4ff', 'Storm'], volt: ['#ffe04a', '#ff9a1f', 'Volt'], ember: ['#f0476a', '#6b4bff', 'Ember'],
   aurora: ['#35e0a8', '#2a8cff', 'Aurora'], dusk: ['#ffb067', '#ff4d8d', 'Dusk'], bone: ['#dfe6ee', '#8fa0b5', 'Bone']
@@ -81,9 +81,9 @@ function goalCard() {
   </section>`;
 }
 function sessionsCard(sub) {
-  const ss = S.profile.sessions.filter(s => !sub || (S.decks[s.did] && subOf(S.decks[s.did]) === sub)).slice(0, 5);
+  const ss = S.profile.sessions.filter(s => !sub || s.sid === sub || (S.decks[s.did] && subOf(S.decks[s.did]) === sub)).slice(0, 5);
   return `<section class="card sec"><div class="sec-h"><h2>Last sessions</h2></div>${ss.length
-    ? '<div class="rows">' + ss.map(s => `<div class="row"><span class="row-t">${esc(s.name)}</span><span class="row-s">${s.mode === 'quiz' ? 'Quiz' : 'Endless'} · ${ago(s.t)}</span><span class="row-r"><span class="score" title="Right : wrong"><span class="g">${s.c | 0}</span><i>:</i><span class="b">${s.w | 0}</span></span></span></div>`).join('') + '</div>'
+    ? '<div class="rows">' + ss.map(s => `<div class="row"><span class="row-t">${esc(s.name)}</span><span class="row-s">${s.mode === 'quiz' ? 'Quiz' : s.mode === 'paper' ? 'Paper, marks' : 'Endless'} · ${ago(s.t)}</span><span class="row-r"><span class="score" title="Right : wrong"><span class="g">${s.c | 0}</span><i>:</i><span class="b">${s.w | 0}</span></span></span></div>`).join('') + '</div>'
     : '<p class="note">Finished sessions land here, right answers against wrong.</p>'}</section>`;
 }
 function activityCard() {
@@ -449,9 +449,16 @@ function paintRail() {
 function render(anim) {
   const r = UI.route, v = $('#view');
   $$('[data-nav]').forEach(a => { if (a.dataset.nav === r) a.setAttribute('aria-current', 'page'); else a.removeAttribute('aria-current'); });
-  $('#app').classList.toggle('focus', r === 'study' && !!UI.sess);
+  const exam = r === 'papers' && !!Pap.run;
+  $('#app').classList.toggle('focus', (r === 'study' && !!UI.sess) || exam);
+  // exam mode: the whole interface settles into the subject's colour
+  const root = document.documentElement;
+  if (root.classList.contains('ambient') !== exam) {
+    root.classList.add('amb-t'); clearTimeout(render.ambT); render.ambT = setTimeout(() => root.classList.remove('amb-t'), 1100);
+    root.classList.toggle('ambient', exam); applyLook(true);
+  }
   if (!S.ready) return;
-  const views = { home: viewHome, study: viewStudy, learn: viewLearn, library: viewLibrary, prefs: viewPrefs };
+  const views = { home: viewHome, study: viewStudy, papers: viewPapers, learn: viewLearn, library: viewLibrary, prefs: viewPrefs };
   v.innerHTML = (views[r] || viewHome)();
   drawBolts(v);
   drawFaces(v);
@@ -464,6 +471,7 @@ function softRender() {
   const ae = document.activeElement;
   if (ae && /^(INPUT|TEXTAREA)$/.test(ae.tagName)) return;
   if (UI.sess || UI.sheet || (UI.route === 'study' && UI.done)) return;
+  if (UI.route === 'papers' && (Pap.run || Pap.done || Pap.job)) return;
   if (UI.route === 'library' && (UI.lib.mode === 'new' || UI.lib.mode === 'build')) return;
   render();
 }

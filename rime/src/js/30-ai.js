@@ -223,6 +223,20 @@ async function chatRules(th, query) {
       }
     }
   }
+  if (th.kind === 'exam' && th.cur) {
+    const cur = th.cur(), x = cur && cur.q;
+    if (x) {
+      q += ' ' + x.q;
+      L.push('', 'CURRENT EXAM QUESTION (from a past paper, or a boss question you wrote; ' + plural(x.marks, 'mark') + ')');
+      if (x.stim) L.push('Stimulus: ' + x.stim);
+      L.push('Question ' + x.n + ': ' + x.q);
+      if (x.kind === 'mc') L.push('Options: ' + x.opts.join(' | '));
+      if (x.crit && x.crit.length) L.push('Marking guideline: ' + x.crit.join('; '));
+      if (x.ans) L.push('Model answer' + (cur.state === 'done' ? '' : ', for your eyes only') + ': ' + x.ans);
+      if (cur.state === 'done' && cur.result) L.push('Status: answered. The student wrote: "' + (cur.answer || '(nothing)') + '". Mark given: ' + cur.result.mark + '/' + cur.result.of + '.');
+      else L.push('Status: NOT answered yet. Do not write the answer for them or say which option is right unless they explicitly ask you to reveal it. Help them plan it instead: what the directive verb wants, and how many points the marks imply.');
+    }
+  }
   if (th.kind === 'lesson' && th.lesson) {
     q += ' ' + th.lesson.title + ' ' + th.lesson.goals.join(' ');
     L.push('', 'THIS CONVERSATION IS A LESSON');

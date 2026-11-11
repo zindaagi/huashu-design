@@ -7,9 +7,24 @@ function toast(msg, ms) {
   toast.t = setTimeout(() => t.classList.remove('on'), ms || 2800);
 }
 let lookSig = '';
+// the theme's surface colours (kept in step with the tokens in the stylesheet) and how far exam mode pulls each toward the accent
+const SURF = {
+  dark: { bg: '#0a0e14', panel: '#0f151e', raise: '#161e2a', sunk: '#06090d', line: '#1d2836', line2: '#2c3b50' },
+  light: { bg: '#edf1f5', panel: '#f6f8fb', raise: '#ffffff', sunk: '#e4e9ef', line: '#d3dbe5', line2: '#b9c5d3' }
+};
+const SURF_TINT = {
+  dark: { bg: 0.1, panel: 0.13, raise: 0.17, sunk: 0.07, line: 0.27, line2: 0.36 },
+  light: { bg: 0.12, panel: 0.08, raise: 0.04, sunk: 0.15, line: 0.24, line2: 0.32 }
+};
+function darkNow() {
+  const look = S.profile.prefs.look, t = document.documentElement.getAttribute('data-theme');
+  if (look === 'dark' || look === 'light') return look === 'dark';
+  if (t === 'dark' || t === 'light') return t === 'dark';
+  return !(window.matchMedia && window.matchMedia('(prefers-color-scheme: light)').matches);
+}
 function applyLook(force) {
   const p = S.profile.prefs, r = document.documentElement, sj = S.subs[curSub()], c = sj && okHex(sj.c) ? sj.c : '';
-  const sig = [p.look, p.a1, p.a2, p.flat, p.motion, c, r.getAttribute('data-theme'), window.matchMedia && window.matchMedia('(prefers-color-scheme: dark)').matches].join('|');
+  const sig = [p.look, p.a1, p.a2, p.flat, p.motion, c, r.classList.contains('ambient'), r.getAttribute('data-theme'), window.matchMedia && window.matchMedia('(prefers-color-scheme: dark)').matches].join('|');
   if (sig === lookSig && !force) return;
   lookSig = sig;
   r.classList.toggle('look-dark', p.look === 'dark');
@@ -21,8 +36,13 @@ function applyLook(force) {
   r.style.setProperty('--a2', a2);
   r.style.setProperty('--on', on);
   r.style.setProperty('--onx', on === '#ffffff' ? '#0a0e14' : '#ffffff');
-  r.style.removeProperty('--ink');
-  r.style.setProperty('--ink', readable(a1, getComputedStyle(r).getPropertyValue('--bg').trim() || '#0a0e14'));
+  // exam mode tints every surface toward the subject's colour; otherwise the surfaces are the theme's own
+  const mode = darkNow() ? 'dark' : 'light', amb = r.classList.contains('ambient');
+  for (const k of Object.keys(SURF[mode])) {
+    if (amb) r.style.setProperty('--' + k, mixHex(SURF[mode][k], a1, SURF_TINT[mode][k]));
+    else r.style.removeProperty('--' + k);
+  }
+  r.style.setProperty('--ink', readable(a1, amb ? mixHex(SURF[mode].bg, a1, SURF_TINT[mode].bg) : SURF[mode].bg));
   try { localStorage.setItem('rime:look', JSON.stringify({ look: p.look, a1: p.a1, a2: p.a2, flat: p.flat, motion: p.motion, preset: p.preset })); } catch (e) {}
   drawBolts();
   syncFaces();
@@ -934,7 +954,7 @@ document.addEventListener('click', e => {
   }
   const el = e.target.closest('[data-act]');
   if (!el || el.disabled) return;
-  const fn = ACT[el.dataset.act];
+  const fn = ACT[el.dataset.act] || PAP_ACT[el.dataset.act];
   if (fn) fn(el, e);
 });
 document.addEventListener('submit', e => {

@@ -1,7 +1,8 @@
 /* ---------- state + storage ----------
    Cloud: everything lives in the viewer's private subtree (data/users/<id>/...), so it follows the Claude account.
      profile            settings, daily tallies, recent sessions
-     s_<subject>        a subject: name, colour, order      s_<subject>/syl/*   its syllabus text
+     s_<subject>        a subject: name, colour, order, papers      s_<subject>/syl/*   its syllabus text
+     s_<subject>/pq/*   a paper's questions   s_<subject>/bp/*   marks on them   s_<subject>/pg/*   page pictures
      d_<deck>           deck record            p_<deck>   per-question memory state
      d_<deck>/cards/*   question bank chunks   d_<deck>/src/*   source text parts   d_<deck>/les/*   lesson chats
    Local: the same shape in localStorage, used when no account storage is available. */
@@ -10,7 +11,7 @@ const STUDY0 = { mode: 'endless', len: 10, mc: true, sa: true, focus: 'adaptive'
 const profile0 = () => ({ v: 1, days: {}, goal: 30, prefs: { ...PREF0 }, pt: 0, active: null, sub: null, act: {}, study: { ...STUDY0 }, at: 0, sessions: [] });
 const CHUNK = 100, PART = 60000, SRC_MAX = 600000;
 
-const S = { ready: false, mode: 'boot', uid: null, stale: false, dead: false, err: null, pending: 0, profile: profile0(), subs: {}, subSyl: {}, decks: {}, prog: {}, progRt: {}, cards: {}, src: {}, les: {} };
+const S = { ready: false, mode: 'boot', uid: null, stale: false, dead: false, err: null, pending: 0, profile: profile0(), subs: {}, subSyl: {}, pq: {}, bp: {}, decks: {}, prog: {}, progRt: {}, cards: {}, src: {}, les: {} };
 let B = null;
 let onStore = () => {};
 
@@ -45,6 +46,7 @@ function cloudBackend(db, uid) {
     },
     del(key) { return run(key, () => retry(() => db.doc(base + '/' + key).delete())); },
     subGet(did, col) { return retry(() => sub(did, col).get()).then(s => s.docs.map(d => ({ id: d.id, data: clone(d.data()) }))); },
+    subOne(did, col, id) { return retry(() => sub(did, col).doc(id).get()).then(d => d.exists ? clone(d.data()) : null); },
     subPut(did, col, id, data) { return run(did + '/' + col + '/' + id, () => retry(() => sub(did, col).doc(id).set(data))); },
     subDel(did, col, id) { return run(did + '/' + col + '/' + id, () => retry(() => sub(did, col).doc(id).delete())); },
     listen(next, fail) {
@@ -69,6 +71,7 @@ function localBackend() {
     },
     async del(key) { rm(key); wr('index', idx().filter(k => k !== key)); },
     async subGet(did, col) { const o = rd('sub:' + did + ':' + col) || {}; return Object.keys(o).map(id => ({ id, data: o[id] })); },
+    async subOne(did, col, id) { const o = rd('sub:' + did + ':' + col) || {}; return o[id] || null; },
     async subPut(did, col, id, data) { const k = 'sub:' + did + ':' + col, o = rd(k) || {}; o[id] = data; wr(k, o); },
     async subDel(did, col, id) { const k = 'sub:' + did + ':' + col, o = rd(k) || {}; delete o[id]; wr(k, o); },
     listen(next) {
@@ -222,10 +225,33 @@ const Store = {
     if (S.profile.sub === id) { S.profile.sub = null; Store.touchActive(); }
     delete S.subSyl[id];
     try {
-      const docs = await B.subGet('s_' + id, 'syl');
-      await Promise.all(docs.map(d => B.subDel('s_' + id, 'syl', d.id)));
+      for (const col of ['syl', 'pq', 'bp', 'pg']) {
+        const docs = await B.subGet('s_' + id, col);
+        await Promise.all(docs.map(d => B.subDel('s_' + id, col, d.id)));
+      }
     } catch (e) {}
     return track(B.del('s_' + id)).catch(saveFailed);
+  },
+  /* past papers: questions, the marks earned on them, and pictures of pages that carry diagrams */
+  loadQs(sid, pid) {
+    const k = sid + '/' + pid;
+    return S.pq[k] ? Promise.resolve(S.pq[k]) : B.subOne('s_' + sid, 'pq', pid).then(d => (S.pq[k] = (d && d.qs) || []));
+  },
+  saveQs(sid, pid, qs) { S.pq[sid + '/' + pid] = qs; return track(B.subPut('s_' + sid, 'pq', pid, { qs })).catch(saveFailed); },
+  loadBP(sid, pid) {
+    const k = sid + '/' + pid;
+    return S.bp[k] ? Promise.resolve(S.bp[k]) : B.subOne('s_' + sid, 'bp', pid).then(d => (S.bp[k] = (d && d.m) || {}));
+  },
+  saveBP(sid, pid) { return track(B.subPut('s_' + sid, 'bp', pid, { m: S.bp[sid + '/' + pid] || {}, t: now() })).catch(saveFailed); },
+  savePage(sid, pid, n, img) { return track(B.subPut('s_' + sid, 'pg', pid + '_' + n, { img })).catch(saveFailed); },
+  loadPage(sid, pid, n) { return B.subOne('s_' + sid, 'pg', pid + '_' + n).then(d => (d && d.img) || ''); },
+  async deletePaper(sid, pid) {
+    const sj = S.subs[sid], p = sj && (sj.papers || []).find(x => x.id === pid);
+    if (!p) return;
+    sj.papers = sj.papers.filter(x => x.id !== pid);
+    delete S.pq[sid + '/' + pid]; delete S.bp[sid + '/' + pid];
+    try { await Promise.all([B.subDel('s_' + sid, 'pq', pid), B.subDel('s_' + sid, 'bp', pid)].concat((p.pages || []).map(n => B.subDel('s_' + sid, 'pg', pid + '_' + n)))); } catch (e) {}
+    return Store.saveSub(sid);
   },
   loadSubSyl(id) {
     if (S.subSyl[id] != null) return Promise.resolve(S.subSyl[id]);
