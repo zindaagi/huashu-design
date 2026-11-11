@@ -23,6 +23,20 @@ function dayShift(key, by) {
   const [y, m, d] = key.split('-').map(Number);
   return dayKey(new Date(y, m - 1, d + by, 12).getTime());
 }
+/* exam dates are plain calendar days, 'YYYY-MM-DD'; noon keeps daylight saving from shifting a count */
+function okDate(s) {
+  const m = /^(\d{4})-(\d{2})-(\d{2})$/.exec(String(s || ''));
+  if (!m) return false;
+  const d = new Date(+m[1], +m[2] - 1, +m[3], 12);
+  return d.getFullYear() === +m[1] && d.getMonth() === +m[2] - 1 && d.getDate() === +m[3];
+}
+const dateAt = key => { const [y, m, d] = key.split('-').map(Number); return new Date(y, m - 1, d, 12); };
+const daysTo = key => Math.round((dateAt(key).getTime() - dateAt(dayKey()).getTime()) / DAY);
+function dayName(key, year) {
+  const d = dateAt(key), o = { weekday: 'short', day: 'numeric', month: 'short' };
+  if (year || d.getFullYear() !== new Date().getFullYear()) o.year = 'numeric';
+  try { return d.toLocaleDateString('en-AU', o).replace(/,/g, ''); } catch (e) { return key; }
+}
 function ago(t) {
   const s = Math.max(0, (Date.now() - t) / 1000);
   if (s < 90) return 'just now';

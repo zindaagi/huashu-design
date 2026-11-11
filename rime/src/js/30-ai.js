@@ -205,6 +205,12 @@ function boltRules(subject, names) {
 }
 /* the All tab: BOLT is handed the whole account, and the parts of every syllabus and set of notes that bear on the message */
 const daysAgo = t => { const d = Math.round((now() - t) / DAY); return d <= 0 ? 'today' : d === 1 ? 'yesterday' : d + ' days ago'; };
+/* how close the exam is, for BOLT */
+function examLine(sid) {
+  const e = examOf(sid);
+  if (!e) return '';
+  return 'exam ' + dayName(e.date, true) + (e.n < 0 ? ' (already sat, ' + (-e.n) + (e.n === -1 ? ' day ago)' : ' days ago)') : e.n === 0 ? ' (today)' : e.n === 1 ? ' (tomorrow)' : ' (in ' + e.n + ' days)');
+}
 async function everything(query) {
   const sids = subIds();
   const dids = Object.keys(S.decks).sort((a, b) => (S.decks[b].ut || 0) - (S.decks[a].ut || 0)).slice(0, 36);
@@ -212,6 +218,9 @@ async function everything(query) {
   await Promise.all(sids.map(id => quiet(Store.loadSubSyl(id))).concat(dids.map(id => quiet(Store.loadCards(id))), dids.map(id => quiet(Store.loadSrc(id)))));
   const nm = id => (S.subs[id] || {}).name || '';
   const L = [];
+  L.push('Today is ' + dayName(dayKey(), true) + '.');
+  const exams = examList().filter(e => e.n >= 0);
+  if (exams.length) L.push('Exams coming up, soonest first: ' + exams.map(e => e.name + ' ' + dayName(e.date) + (e.n === 0 ? ' (today)' : e.n === 1 ? ' (tomorrow)' : ' (in ' + e.n + ' days)')).join('; ') + '. Let how close each one is shape what you tell them to work on.');
   L.push('Today: ' + plural(today().n, 'question') + ' answered, daily goal ' + (S.profile.goal || 30) + '. Day streak: ' + dayStreak() + '. Level ' + level().lv + '.');
   L.push('', 'Subjects and decks:');
   const groups = sids.map(id => [id, nm(id)]);
@@ -219,7 +228,7 @@ async function everything(query) {
   if (!groups.length) L.push('(nothing yet: no subjects and no decks)');
   for (const [sid, name] of groups) {
     const sj = S.subs[sid], mine = dids.filter(d => subOf(S.decks[d]) === sid);
-    L.push('- ' + name + (sj ? (sj.syl ? ' (syllabus added)' : ' (no syllabus added yet)') : '') + (mine.length ? '' : ': no decks yet'));
+    L.push('- ' + name + (sj ? (sj.syl ? ' (syllabus added)' : ' (no syllabus added yet)') : '') + (examLine(sid) ? ', ' + examLine(sid) : '') + (mine.length ? '' : ': no decks yet'));
     for (const did of mine) {
       const d = S.decks[did], st = deckStats(did), weak = weakTopics(did, 3).map(t => t.topic), strong = strongTopics(did, 2).map(t => t.topic);
       L.push('    deck "' + d.name + '": ' + plural(st.total, 'question') + ', ' + st.seen + ' tried, mastery ' + pct(st.mastery) + '%, ' + st.due + ' due now' + (st.acc != null ? ', ' + pct(st.acc) + '% of answers right' : '') +
@@ -274,6 +283,8 @@ async function chatRules(th, query) {
   if (th.all) return allRules(th, query);
   const d = th.did ? S.decks[th.did] : null, c = await courseOf(th.did, th.sub);
   const L = boltRules(c.subject);
+  const exam = examLine(d ? subOf(d) : (th.sub || ''));
+  if (exam) L.push('- Their ' + (c.subject || 'subject') + ' ' + exam + '. Today is ' + dayName(dayKey(), true) + '. Let how close it is shape your advice on what to prioritise, and only bring it up when it is relevant.');
   let q = query || '';
   if (th.kind === 'quiz' && th.cur) {
     const cur = th.cur(), card = cur && cur.card;

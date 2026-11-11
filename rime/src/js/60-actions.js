@@ -24,12 +24,13 @@ function darkNow() {
 }
 function applyLook(force) {
   const p = S.profile.prefs, r = document.documentElement, sj = S.subs[curSub()], c = sj && okHex(sj.c) ? sj.c : '';
-  const sig = [p.look, p.a1, p.a2, p.flat, p.motion, c, r.classList.contains('ambient'), r.getAttribute('data-theme'), window.matchMedia && window.matchMedia('(prefers-color-scheme: dark)').matches].join('|');
+  const sig = [p.look, p.a1, p.a2, p.flat, p.motion, sysCalm(), c, r.classList.contains('ambient'), r.getAttribute('data-theme'), window.matchMedia && window.matchMedia('(prefers-color-scheme: dark)').matches].join('|');
   if (sig === lookSig && !force) return;
   lookSig = sig;
   r.classList.toggle('look-dark', p.look === 'dark');
   r.classList.toggle('look-light', p.look === 'light');
-  r.classList.toggle('calm', !p.motion);
+  r.classList.toggle('calm', calm());
+  r.classList.toggle('move', p.motion === true);
   // the subject in view themes everything; the base colour covers the All tab and unsorted decks
   const a1 = c || p.a1, a2 = p.flat ? a1 : (c ? partner(c) : p.a2), on = onColor(a1, a2);
   r.style.setProperty('--a1', a1);
@@ -89,12 +90,12 @@ function subjectSheet(id) {
   const acts = [];
   if (s) acts.push({ label: 'Delete', cls: 'danger', fn: () => confirmSheet('Delete ' + s.name + '?', 'The tab goes away. Its ' + plural(deckIds(id).length, 'deck') + ' and all progress are kept and move to Unsorted.', 'Delete subject', async () => { closeSheet(); await Store.deleteSub(id); applyLook(); render(); toast('Subject deleted'); }, true) });
   acts.push({ label: 'Cancel', cls: 'ghost' }, { label: s ? 'Save' : 'Add subject', cls: 'pri', fn: () => {
-    const name = str($('#sj-name').value, 32);
+    const name = str($('#sj-name').value, 32), ex = $('#sj-exam').value, exam = okDate(ex) ? ex : '';
     if (!name) { toast('Give the subject a name.'); return false; }
     closeSheet();
-    if (s) { s.name = name; s.c = c; Store.saveSub(id); applyLook(true); render(); return; }
+    if (s) { s.name = name; s.c = c; if (exam) s.exam = exam; else delete s.exam; Store.saveSub(id); applyLook(true); render(); return; }
     const nid = mkid('j'), order = subIds().reduce((m, x) => Math.max(m, S.subs[x].o || 0), -1) + 1;
-    S.subs[nid] = { k: 'sub', id: nid, name, c, o: order, t: now() };
+    S.subs[nid] = Object.assign({ k: 'sub', id: nid, name, c, o: order, t: now() }, exam ? { exam } : null);
     Store.saveSub(nid);
     selectSub(nid);
   } });
@@ -104,6 +105,8 @@ function subjectSheet(id) {
       <label class="field"><span class="lbl">Name</span><input class="inp" id="sj-name" maxlength="32" value="${esc(s ? s.name : '')}" placeholder="Chemistry"></label>
       <div class="field"><span class="lbl">Colour</span><div class="swatches" id="sj-sw"></div><label class="color"><input type="color" id="sj-c">Any other colour</label></div>
       <p class="note">The subject gets its own tab, and everything inside it takes this colour.</p>
+      <div class="field"><label class="lbl" for="sj-exam">Exam date</label><div class="chips" style="align-items:center"><input class="inp" type="date" id="sj-exam" style="width:auto;flex:1 1 170px" value="${s && okDate(s.exam) ? s.exam : ''}"><button class="link" type="button" data-act="sj-noexam">No date</button></div>
+        <p class="note">Counts down on this subject's home and on the All home, and BOLT plans around it.</p></div>
       ${s ? `<div class="chips" style="align-items:center"><button class="btn sm" data-act="sub-syl" data-id="${id}">${ic('file')}${s.syl ? 'Edit syllabus' : 'Add the HSC syllabus'}</button><span class="note">${s.syl ? Number(s.syl).toLocaleString() + ' characters on file' : 'BOLT marks against it once it is here'}</span></div>` : ''}`,
     onOpen: paint, setC(x) { if (okHex(x)) { c = x; paint(); } }, acts
   });
@@ -950,6 +953,7 @@ const ACT = {
   'sub-edit': el => subjectSheet(el.dataset.id),
   'sub-syl': el => editSubSyllabus(el.dataset.id),
   'sj-color': el => { if (UI.sheet && UI.sheet.setC) UI.sheet.setC(el.dataset.c); },
+  'sj-noexam': () => { const el = $('#sj-exam'); if (el) el.value = ''; },
   'nd-sub': el => { const id = el.dataset.id; UI.nd.sub = id; S.profile.sub = id || null; Store.touchActive(); applyLook(); paintSubs(); paintNewDeck(); },
   'deck-move': el => { const did = UI.lib.did, d = S.decks[did], id = el.dataset.id; if (!d) return; if (S.subs[id]) d.sub = id; else delete d.sub; Store.saveDeck(did); setActive(did); followDeck(did); render(); toast(S.subs[id] ? 'Moved to ' + S.subs[id].name : 'Moved out of its subject'); },
   'lib-back': () => { UI.lib = { mode: 'list', did: null, q: '' }; UI.nd = null; render(true); $('#main').scrollTop = 0; },
@@ -980,6 +984,9 @@ const ACT = {
   'pf-preset': el => { const k = el.dataset.k, p = PRESETS[k]; setPref({ preset: k, a1: p[0], a2: p[1] }); },
   'pf-flat': el => setPref({ flat: el.dataset.v === '1' }),
   'pf-look': el => setPref({ look: el.dataset.v }),
+  'pf-motion': el => { const v = el.dataset.v; setPref({ motion: v === 'on' ? true : v === 'off' ? false : 'auto' }); syncFaces(); },
+  'motion-on': () => { setPref({ motion: true }); syncFaces(); toast('Animations on, on every device'); },
+  'motion-keep': () => { try { localStorage.setItem('rime:calmok', '1'); } catch (e) {} UI.calmOk = true; render(); },
   'pf-toggle': el => { const k = el.dataset.k, v = !S.profile.prefs[k]; setPref({ [k]: v }); if (k === 'sound' && v) ping(true); },
   'pf-goal': el => { S.profile.goal = Number(el.dataset.n); Store.touchPrefs(); render(); },
   'pf-typo': el => setPref({ typo: el.dataset.v }),
@@ -1064,7 +1071,13 @@ document.addEventListener('drop', e => {
 });
 window.addEventListener('hashchange', onRoute);
 window.addEventListener('resize', debounce(() => drawBolts(), 180));
-document.addEventListener('visibilitychange', () => { if (document.hidden) Store.flush(); });
+document.addEventListener('visibilitychange', () => { if (document.hidden) Store.flush(); else newDay(); });
+// countdowns and the daily goal turn over at midnight, even on a page left open
+let dayShown = dayKey();
+function newDay() { const k = dayKey(); if (k !== dayShown) { dayShown = k; softRender(); } }
+setInterval(newDay, 60000);
+// the device's motion setting can change while the page is open
+try { window.matchMedia('(prefers-reduced-motion: reduce)').addEventListener('change', () => { applyLook(true); syncFaces(); softRender(); }); } catch (e) {}
 window.addEventListener('pagehide', () => Store.flush());
 
 /* ----- boot ----- */

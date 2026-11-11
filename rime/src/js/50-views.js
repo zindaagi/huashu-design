@@ -24,8 +24,12 @@ function notices() {
   if (S.dead) out.push('Saving to your account has stopped. Reload the page to reconnect; anything new stays on this screen until then.');
   else if (S.stale) out.push('Your saved progress has not arrived yet. Still trying. What you do now is kept and merged in.');
   if (S.mode === 'local') out.push('Progress is saved in this browser only. Open this page inside Claude, signed in, to sync across your devices.');
-  return out.map(t => '<div class="banner">' + ic('warn') + '<span>' + t + '</span></div>').join('');
+  let h = out.map(t => '<div class="banner">' + ic('warn') + '<span>' + t + '</span></div>').join('');
+  // the device asks for less motion and Motion follows the device: say why the screen is still, once
+  if (S.ready && S.profile.prefs.motion === 'auto' && sysCalm() && !calmOk()) h += '<div class="banner quiet">' + ic('bolt') + '<span>Animations are off because this device asks apps to reduce motion. On Windows that is Settings, Accessibility, Visual effects, Animation effects.</span><span class="chips"><button class="btn sm" data-act="motion-on">Animate anyway</button><button class="btn sm ghost" data-act="motion-keep">Leave off</button></span></div>';
+  return h;
 }
+function calmOk() { if (UI.calmOk) return true; try { return localStorage.getItem('rime:calmok') === '1'; } catch (e) { return false; } }
 function needDeck(title, text) {
   const sub = curSub();
   return `<div class="page-h"><div><p class="lbl">${title}${sub ? ' · ' + esc(subName(sub)) : ''}</p><h1>No deck yet</h1></div></div>
@@ -105,6 +109,35 @@ function subTotals(id) {
   for (const d of ids) { const st = deckStats(d); total += st.total; due += st.due; sum += st.mastery * st.total; }
   return { decks: ids.length, total, due, m: total ? sum / total : 0 };
 }
+/* ----- exam countdowns ----- */
+const examLeft = n => n < 0 ? (n === -1 ? 'yesterday' : -n + ' days ago') : n === 0 ? 'today' : n === 1 ? 'tomorrow' : 'in ' + n + ' days';
+function examTicks(n) {
+  if (n < 1 || n > 42) return '';
+  let h = '';
+  for (let i = 0; i < n; i++) h += '<i' + (i % 7 === 6 ? ' class="wk"' : '') + '></i>';
+  return '<div class="cd-ticks" aria-hidden="true">' + h + '</div>';
+}
+// one subject's countdown, across the top of its home
+function examStrip(sid) {
+  const e = examOf(sid);
+  if (!e) return '';
+  const big = e.n < 0 ? 'Done' : e.n === 0 ? 'Today' : String(e.n);
+  return `<section class="cd${e.n < 0 ? ' past' : e.n <= 7 ? ' soon' : ''}" aria-label="${esc(e.name)} exam ${examLeft(e.n)}">
+    <div class="cd-n"><b${e.n > 0 ? '' : ' class="w"'}>${big}</b>${e.n > 0 ? '<span>' + (e.n === 1 ? 'day' : 'days') + ' to go</span>' : ''}</div>
+    <div class="cd-t"><p class="lbl">${esc(e.name)} exam</p><p class="cd-d">${dayName(e.date)}${e.n < 0 ? ', ' + examLeft(e.n) : e.n === 1 ? ', tomorrow' : ''}</p></div>
+    <button class="btn sm ghost cd-edit" data-act="sub-edit" data-id="${sid}" aria-label="Change the exam date">${ic('edit')}</button>
+    ${examTicks(e.n)}
+  </section>`;
+}
+// every subject's countdown, soonest first, on the All home
+function examBoard() {
+  const list = examList();
+  if (!list.length) return '';
+  const next = list[0].n >= 0 ? list[0] : null, flat = S.profile.prefs.flat;
+  return `<section class="sec cdboard" aria-label="Exam countdowns"><div class="sec-h"><h2>Exams</h2>${next ? `<span class="lbl">Next: ${esc(next.name)}, ${dayName(next.date)}</span>` : ''}</div>
+    <div class="cdgrid">${list.map((e, i) => `<button class="extile${e.n < 0 ? ' past' : ''}${next && i === 0 ? ' next' : ''}" data-act="sub" data-id="${e.sid}" style="${subStyle(e.c, flat)}" aria-label="${esc(e.name)} exam ${examLeft(e.n)}, ${dayName(e.date)}">
+      <span class="lbl">${esc(e.name)}</span><span class="extile-n"><b${e.n > 0 ? '' : ' class="w"'}>${e.n < 0 ? 'Done' : e.n === 0 ? 'Today' : e.n}</b>${e.n > 0 ? '<em>' + (e.n === 1 ? 'day' : 'days') + '</em>' : ''}</span><span class="extile-s">${dayName(e.date)}</span></button>`).join('')}</div></section>`;
+}
 function viewOverview() {
   const flat = S.profile.prefs.flat, subs = subIds();
   const card = (id, name, c) => {
@@ -116,6 +149,7 @@ function viewOverview() {
   };
   return `${notices()}<div class="home">
   <section class="sec over">
+    ${examBoard()}
     <div class="page-h"><div><p class="lbl">All subjects</p><h1>Pick a subject</h1></div><button class="btn" data-act="sub-add">${ic('plus')}Add a subject</button></div>
     <div class="subgrid">${subs.map(id => card(id, S.subs[id].name, S.subs[id].c)).join('')}${deckIds('_').length ? card('_', 'Unsorted', '') : ''}</div>
   </section>
@@ -130,6 +164,7 @@ function viewHome() {
   const head = sub ? esc(subName(sub)) : 'All decks';
   if (!ids.length) {
     return `${notices()}<div class="home">
+    ${examStrip(sub)}
     <section class="hero">
       <canvas class="hero-art" data-bolt="sub-${sub}" data-g="0"></canvas>
       <div class="hero-in">
@@ -147,6 +182,7 @@ function viewHome() {
   const cta = st.due ? 'Continue · ' + st.due + ' due' : st.fresh ? 'Continue · ' + st.fresh + ' new' : 'Keep sharp';
   const weak = weakTopics(did), strong = strongTopics(did);
   return `${notices()}<div class="home">
+  ${examStrip(sub)}
   <section class="hero" aria-label="Active deck">
     <canvas class="hero-art" data-bolt="${did}" data-g="${st.mastery.toFixed(3)}"></canvas>
     <div class="hero-ghost" aria-hidden="true" data-count="${pct(st.mastery)}">${pct(st.mastery)}<i>%</i></div>
@@ -424,9 +460,13 @@ function viewPrefs() {
       <p class="note">Gradient or flat applies everywhere, subjects included.</p>
     </section>
     <section class="pref"><h3>Light</h3><div class="chips">${chip('Match Claude', p.look === 'auto', 'pf-look', 'data-v="auto"')}${chip('Dark', p.look === 'dark', 'pf-look', 'data-v="dark"')}${chip('Light', p.look === 'light', 'pf-look', 'data-v="light"')}</div></section>
+    <section class="pref"><h3>Motion</h3>
+      <div class="chips">${chip('On', p.motion === true, 'pf-motion', 'data-v="on"')}${chip('Follow this device', p.motion !== true && p.motion !== false, 'pf-motion', 'data-v="auto"')}${chip('Off', p.motion === false, 'pf-motion', 'data-v="off"')}</div>
+      <p class="note">${sysCalm() ? (p.motion === true ? 'This device asks apps to reduce motion. On overrules that, so everything animates here anyway.' : p.motion === false ? 'Everything stays still.' : 'This device asks apps to reduce motion, so the screen stays still here. Choose On to animate anyway. On Windows the device setting is Settings, Accessibility, Visual effects, Animation effects.')
+    : (p.motion === false ? 'Everything stays still.' : 'Hover tilt, lightning and BOLT\u2019s face all move. Off gives a still screen.')}</p></section>
     <section class="pref"><h3>Rewards</h3>
-      <div class="chips">${chip('Animation', p.motion, 'pf-toggle', 'data-k="motion"')}${chip('Sound', p.sound, 'pf-toggle', 'data-k="sound"')}${chip('Vibration', p.haptic, 'pf-toggle', 'data-k="haptic"')}</div>
-      <p class="note">A right answer discharges in a burst of lightning, with an optional zap. Turn animation off for a still screen.</p></section>
+      <div class="chips">${chip('Sound', p.sound, 'pf-toggle', 'data-k="sound"')}${chip('Vibration', p.haptic, 'pf-toggle', 'data-k="haptic"')}</div>
+      <p class="note">A right answer discharges in a burst of lightning, with an optional zap.</p></section>
     <section class="pref"><h3>Daily goal</h3><div class="chips">${[10, 20, 30, 50, 100].map(n => chip(n + ' answers', goal === n, 'pf-goal', 'data-n="' + n + '"')).join('')}</div></section>
     <section class="pref"><h3>Marking typed answers</h3>
       <div class="chips">${chip('Strict', p.typo === 'strict', 'pf-typo', 'data-v="strict"')}${chip('Balanced', p.typo === 'balanced', 'pf-typo', 'data-v="balanced"')}${chip('Generous', p.typo === 'generous', 'pf-typo', 'data-v="generous"')}</div>

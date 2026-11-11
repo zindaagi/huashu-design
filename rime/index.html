@@ -133,6 +133,9 @@ svg{display:block}
 .note{font-size:13.5px;color:var(--fg2);max-width:62ch}
 .banner{display:flex;gap:10px;align-items:flex-start;padding:10px 12px;border:1px solid var(--line2);border-radius:var(--r);font-size:13px;color:var(--fg2);background:var(--panel)}
 .banner .i{color:var(--warn);margin-top:1px}
+.banner.quiet{flex-wrap:wrap;align-items:center}
+.banner.quiet .i{color:var(--ink);margin-top:0}
+.banner.quiet>span:first-of-type{flex:1 1 240px;min-width:0}
 
 /* ---------- hero ---------- */
 .hero{position:relative;overflow:hidden;display:flex;min-height:308px;background:var(--grad);color:var(--on);clip-path:polygon(0 0,calc(100% - 28px) 0,100% 28px,100% 100%,28px 100%,0 calc(100% - 28px))}
@@ -160,8 +163,8 @@ svg{display:block}
 .duo{display:grid;gap:22px;grid-template-columns:repeat(auto-fit,minmax(min(100%,300px),1fr))}
 @media (min-width:1120px){
   .home{grid-template-columns:minmax(0,1fr) 316px;align-items:start}
-  .home>.side{grid-column:2;grid-row:1 / span 4}
-  .home>.hero,.home>.duo,.home>.decks,.home>.how,.home>.over{grid-column:1}
+  .home>.side{grid-column:2;grid-row:1 / span 5}
+  .home>.cd,.home>.hero,.home>.duo,.home>.decks,.home>.how,.home>.over{grid-column:1}
 }
 .goal{display:grid;grid-template-columns:76px minmax(0,1fr);gap:14px;align-items:center}
 .ring{position:relative;width:76px;height:76px}
@@ -397,6 +400,41 @@ svg{display:block}
 @keyframes facepop{0%{transform:scale(1)}35%{transform:scale(1.2) rotate(-5deg)}70%{transform:scale(.96) rotate(2deg)}100%{transform:scale(1)}}
 @keyframes bub{from{opacity:0;transform:translateY(8px) scale(.96)}}
 
+/* ---------- exam countdowns ---------- */
+.cd{position:relative;display:grid;grid-template-columns:auto minmax(0,1fr);align-items:center;gap:12px 18px;min-width:0;padding:14px 50px 14px 16px;background:var(--panel);border:1px solid var(--line);border-left:3px solid var(--a1);border-radius:var(--r)}
+.cd-n{display:flex;align-items:baseline;gap:8px}
+.cd-n b{font:800 54px/.82 var(--fd);letter-spacing:.01em;text-transform:uppercase;font-variant-numeric:tabular-nums}
+.cd-n b.w{font-size:38px;line-height:1}
+.cd.soon .cd-n b{color:var(--ink,var(--a1))}
+.cd-n span{font:500 11px/1.2 var(--fm);letter-spacing:.08em;text-transform:uppercase;color:var(--fg2)}
+.cd-t{min-width:0}
+.cd-d{font:700 21px/1.05 var(--fd);text-transform:uppercase;letter-spacing:.03em;margin-top:3px}
+.cd .cd-edit{position:absolute;top:8px;right:8px;min-width:36px;min-height:36px;padding:0 8px;color:var(--mute)}
+.cd .cd-edit:hover{color:var(--fg)}
+.cd-ticks{grid-column:1 / -1;display:flex;flex-wrap:wrap;gap:5px 3px}
+.cd-ticks i{width:3px;height:12px;background:var(--a1);transform:skewX(-16deg)}
+.cd-ticks i.wk{margin-right:8px}
+.cd.past{border-left-color:var(--line2)}
+.cd.past .cd-n b{color:var(--mute)}
+.cdboard{gap:12px}
+.cdgrid{display:grid;grid-template-columns:repeat(auto-fit,minmax(min(100%,92px),1fr));gap:10px}
+.extile{position:relative;display:flex;flex-direction:column;gap:8px;min-width:0;padding:11px 11px 12px;text-align:left;background:var(--panel);border:1px solid var(--line);border-top:2px solid var(--c);border-radius:var(--r);transition:border-color .12s,filter .12s,transform .15s cubic-bezier(.2,.8,.2,1)}
+/* two lines kept for the name, so the numbers line up from tile to tile */
+.extile .lbl{display:-webkit-box;-webkit-box-orient:vertical;-webkit-line-clamp:2;overflow:hidden;min-height:2.5em;line-height:1.25;letter-spacing:.07em;overflow-wrap:anywhere}
+.extile-n{display:flex;flex-wrap:wrap;align-items:baseline;gap:0 5px;margin-top:auto}
+.extile b{font:800 46px/.84 var(--fd);letter-spacing:.01em;text-transform:uppercase;font-variant-numeric:tabular-nums}
+.extile b.w{font-size:27px;line-height:1.43}
+.extile em{font:500 10px/1 var(--fm);font-style:normal;letter-spacing:.07em;text-transform:uppercase;color:var(--fg2)}
+.extile-s{font:400 10.5px/1.25 var(--fm);letter-spacing:.05em;text-transform:uppercase;color:var(--fg2);white-space:nowrap}
+.extile:hover{border-color:var(--c)}
+.extile:focus-visible{outline:2px solid var(--c);outline-offset:2px}
+.extile.next{background:linear-gradient(135deg,var(--c),var(--c2));border-color:transparent;color:var(--co)}
+.extile.next .lbl,.extile.next .extile-s,.extile.next em{color:color-mix(in srgb,var(--co) 84%,transparent)}
+.extile.next:hover{filter:brightness(1.08)}
+.extile.past{opacity:.55}
+@media (hover:hover) and (pointer:fine){.extile:hover{transform:translateY(-2px)}}
+@media (max-width:420px){.cd{gap:10px 14px}.cd-n b{font-size:46px}}
+
 /* the switch under a quiz question: what the next one will be */
 .nextfmt{display:flex;flex-wrap:wrap;align-items:center;justify-content:center;gap:8px 12px}
 .seg{display:inline-flex;max-width:100%;border:1px solid var(--line2);border-radius:var(--r);overflow:hidden;background:var(--sunk)}
@@ -568,7 +606,8 @@ details.more>*:not(summary){margin-top:8px}
 @keyframes blink{0%,100%{opacity:.25}50%{opacity:1}}
 @keyframes spin{to{transform:rotate(360deg)}}
 .calm *,.calm *::after,.calm *::before{animation-duration:.001ms!important;animation-iteration-count:1!important;transition-duration:.001ms!important}
-@media (prefers-reduced-motion:reduce){*,*::after,*::before{animation-duration:.001ms!important;animation-iteration-count:1!important;transition-duration:.001ms!important}}
+/* the device's wish for less motion holds unless Motion is set to On in the app (:root.move) */
+@media (prefers-reduced-motion:reduce){:root:not(.move) *,:root:not(.move) *::after,:root:not(.move) *::before{animation-duration:.001ms!important;animation-iteration-count:1!important;transition-duration:.001ms!important}}
 </style>
 <svg width="0" height="0" style="position:absolute" aria-hidden="true" focusable="false">
   <defs>
@@ -667,6 +706,20 @@ function dayKey(t = Date.now()) {
 function dayShift(key, by) {
   const [y, m, d] = key.split('-').map(Number);
   return dayKey(new Date(y, m - 1, d + by, 12).getTime());
+}
+/* exam dates are plain calendar days, 'YYYY-MM-DD'; noon keeps daylight saving from shifting a count */
+function okDate(s) {
+  const m = /^(\d{4})-(\d{2})-(\d{2})$/.exec(String(s || ''));
+  if (!m) return false;
+  const d = new Date(+m[1], +m[2] - 1, +m[3], 12);
+  return d.getFullYear() === +m[1] && d.getMonth() === +m[2] - 1 && d.getDate() === +m[3];
+}
+const dateAt = key => { const [y, m, d] = key.split('-').map(Number); return new Date(y, m - 1, d, 12); };
+const daysTo = key => Math.round((dateAt(key).getTime() - dateAt(dayKey()).getTime()) / DAY);
+function dayName(key, year) {
+  const d = dateAt(key), o = { weekday: 'short', day: 'numeric', month: 'short' };
+  if (year || d.getFullYear() !== new Date().getFullYear()) o.year = 'numeric';
+  try { return d.toLocaleDateString('en-AU', o).replace(/,/g, ''); } catch (e) { return key; }
 }
 function ago(t) {
   const s = Math.max(0, (Date.now() - t) / 1000);
@@ -851,7 +904,7 @@ const ic = n => '<svg class="i" viewBox="0 0 24 24" aria-hidden="true">' + (ICON
      d_<deck>           deck record            p_<deck>   per-question memory state
      d_<deck>/cards/*   question bank chunks   d_<deck>/src/*   source text parts   d_<deck>/les/*   lesson chats
    Local: the same shape in localStorage, used when no account storage is available. */
-const PREF0 = { look: 'auto', preset: 'storm', a1: '#7a6bff', a2: '#31c4ff', flat: false, motion: true, sound: false, haptic: true, pace: 'quick', typo: 'balanced' };
+const PREF0 = { look: 'auto', preset: 'storm', a1: '#7a6bff', a2: '#31c4ff', flat: false, motion: 'auto', sound: false, haptic: true, pace: 'quick', typo: 'balanced' };
 const STUDY0 = { mode: 'endless', len: 10, mc: true, sa: true, focus: 'adaptive', topup: true };
 const profile0 = () => ({ v: 1, days: {}, goal: 30, prefs: { ...PREF0 }, pt: 0, active: null, sub: null, act: {}, study: { ...STUDY0 }, at: 0, sessions: [] });
 const CHUNK = 100, PART = 60000, SRC_MAX = 600000;
@@ -1260,6 +1313,15 @@ function bestStreak() {
 /* subjects: '_' stands for decks that belong to no (existing) subject */
 const subIds = () => Object.keys(S.subs).sort((a, b) => ((S.subs[a].o || 0) - (S.subs[b].o || 0)) || ((S.subs[a].t || 0) - (S.subs[b].t || 0)));
 const subOf = d => d && d.sub && S.subs[d.sub] ? d.sub : '_';
+/* exam countdowns: soonest first, and exams already sat go to the end */
+function examOf(sid) {
+  const s = S.subs[sid];
+  return s && okDate(s.exam) ? { sid, name: s.name, c: s.c, date: s.exam, n: daysTo(s.exam) } : null;
+}
+function examList() {
+  const all = subIds().map(examOf).filter(Boolean);
+  return all.filter(e => e.n >= 0).sort((a, b) => a.n - b.n).concat(all.filter(e => e.n < 0).sort((a, b) => b.n - a.n));
+}
 function deckIds(sub) {
   let ids = Object.keys(S.decks);
   if (sub) ids = ids.filter(id => subOf(S.decks[id]) === sub);
@@ -1878,6 +1940,12 @@ function boltRules(subject, names) {
 }
 /* the All tab: BOLT is handed the whole account, and the parts of every syllabus and set of notes that bear on the message */
 const daysAgo = t => { const d = Math.round((now() - t) / DAY); return d <= 0 ? 'today' : d === 1 ? 'yesterday' : d + ' days ago'; };
+/* how close the exam is, for BOLT */
+function examLine(sid) {
+  const e = examOf(sid);
+  if (!e) return '';
+  return 'exam ' + dayName(e.date, true) + (e.n < 0 ? ' (already sat, ' + (-e.n) + (e.n === -1 ? ' day ago)' : ' days ago)') : e.n === 0 ? ' (today)' : e.n === 1 ? ' (tomorrow)' : ' (in ' + e.n + ' days)');
+}
 async function everything(query) {
   const sids = subIds();
   const dids = Object.keys(S.decks).sort((a, b) => (S.decks[b].ut || 0) - (S.decks[a].ut || 0)).slice(0, 36);
@@ -1885,6 +1953,9 @@ async function everything(query) {
   await Promise.all(sids.map(id => quiet(Store.loadSubSyl(id))).concat(dids.map(id => quiet(Store.loadCards(id))), dids.map(id => quiet(Store.loadSrc(id)))));
   const nm = id => (S.subs[id] || {}).name || '';
   const L = [];
+  L.push('Today is ' + dayName(dayKey(), true) + '.');
+  const exams = examList().filter(e => e.n >= 0);
+  if (exams.length) L.push('Exams coming up, soonest first: ' + exams.map(e => e.name + ' ' + dayName(e.date) + (e.n === 0 ? ' (today)' : e.n === 1 ? ' (tomorrow)' : ' (in ' + e.n + ' days)')).join('; ') + '. Let how close each one is shape what you tell them to work on.');
   L.push('Today: ' + plural(today().n, 'question') + ' answered, daily goal ' + (S.profile.goal || 30) + '. Day streak: ' + dayStreak() + '. Level ' + level().lv + '.');
   L.push('', 'Subjects and decks:');
   const groups = sids.map(id => [id, nm(id)]);
@@ -1892,7 +1963,7 @@ async function everything(query) {
   if (!groups.length) L.push('(nothing yet: no subjects and no decks)');
   for (const [sid, name] of groups) {
     const sj = S.subs[sid], mine = dids.filter(d => subOf(S.decks[d]) === sid);
-    L.push('- ' + name + (sj ? (sj.syl ? ' (syllabus added)' : ' (no syllabus added yet)') : '') + (mine.length ? '' : ': no decks yet'));
+    L.push('- ' + name + (sj ? (sj.syl ? ' (syllabus added)' : ' (no syllabus added yet)') : '') + (examLine(sid) ? ', ' + examLine(sid) : '') + (mine.length ? '' : ': no decks yet'));
     for (const did of mine) {
       const d = S.decks[did], st = deckStats(did), weak = weakTopics(did, 3).map(t => t.topic), strong = strongTopics(did, 2).map(t => t.topic);
       L.push('    deck "' + d.name + '": ' + plural(st.total, 'question') + ', ' + st.seen + ' tried, mastery ' + pct(st.mastery) + '%, ' + st.due + ' due now' + (st.acc != null ? ', ' + pct(st.acc) + '% of answers right' : '') +
@@ -1947,6 +2018,8 @@ async function chatRules(th, query) {
   if (th.all) return allRules(th, query);
   const d = th.did ? S.decks[th.did] : null, c = await courseOf(th.did, th.sub);
   const L = boltRules(c.subject);
+  const exam = examLine(d ? subOf(d) : (th.sub || ''));
+  if (exam) L.push('- Their ' + (c.subject || 'subject') + ' ' + exam + '. Today is ' + dayName(dayKey(), true) + '. Let how close it is shape your advice on what to prioritise, and only bring it up when it is relevant.');
   let q = query || '';
   if (th.kind === 'quiz' && th.cur) {
     const cur = th.cur(), card = cur && cur.card;
@@ -2174,7 +2247,10 @@ function drawBolt(cv, key, g, o) {
   // a passing flash: the whole channel lights for a moment, whatever the charge
   if (o.flash > 0) { ctx.globalAlpha = Math.min(1, o.flash); strokeBolt(ctx, sp, w, h, o.reach == null ? 1 : o.reach, lw * 1.3); ctx.globalAlpha = 1; }
 }
-const calm = () => !S.profile.prefs.motion || (window.matchMedia && window.matchMedia('(prefers-reduced-motion: reduce)').matches);
+/* Motion is the app's own setting: on (true), off (false), or 'auto', which follows the device.
+   Windows reports "reduce motion" whenever its Animation effects switch is off, so On has to be able to overrule it. */
+const sysCalm = () => !!(window.matchMedia && window.matchMedia('(prefers-reduced-motion: reduce)').matches);
+const calm = () => { const m = S.profile.prefs.motion; return m === false || (m !== true && sysCalm()); };
 function growBolt(cv, key, from, to, ms) {
   if (calm()) return drawBolt(cv, key, to);
   const t0 = performance.now();
@@ -2362,7 +2438,8 @@ const TILT = [['.stab', 14], ['.deck', 10], ['.subcard', 9], ['.sj-prev', 6], ['
     seen = false;
   };
   document.addEventListener('pointermove', e => {
-    if (e.pointerType !== 'mouse' || !fine.matches) return;
+    // a real mouse is enough: touch-screen laptops can report a coarse main pointer while a mouse is in use
+    if (e.pointerType !== 'mouse') return;
     if (calm()) { if (cur || seen) leave(); return; }
     ev = e;
     if (!raf) raf = requestAnimationFrame(frame);
@@ -2659,8 +2736,12 @@ function notices() {
   if (S.dead) out.push('Saving to your account has stopped. Reload the page to reconnect; anything new stays on this screen until then.');
   else if (S.stale) out.push('Your saved progress has not arrived yet. Still trying. What you do now is kept and merged in.');
   if (S.mode === 'local') out.push('Progress is saved in this browser only. Open this page inside Claude, signed in, to sync across your devices.');
-  return out.map(t => '<div class="banner">' + ic('warn') + '<span>' + t + '</span></div>').join('');
+  let h = out.map(t => '<div class="banner">' + ic('warn') + '<span>' + t + '</span></div>').join('');
+  // the device asks for less motion and Motion follows the device: say why the screen is still, once
+  if (S.ready && S.profile.prefs.motion === 'auto' && sysCalm() && !calmOk()) h += '<div class="banner quiet">' + ic('bolt') + '<span>Animations are off because this device asks apps to reduce motion. On Windows that is Settings, Accessibility, Visual effects, Animation effects.</span><span class="chips"><button class="btn sm" data-act="motion-on">Animate anyway</button><button class="btn sm ghost" data-act="motion-keep">Leave off</button></span></div>';
+  return h;
 }
+function calmOk() { if (UI.calmOk) return true; try { return localStorage.getItem('rime:calmok') === '1'; } catch (e) { return false; } }
 function needDeck(title, text) {
   const sub = curSub();
   return `<div class="page-h"><div><p class="lbl">${title}${sub ? ' \u00b7 ' + esc(subName(sub)) : ''}</p><h1>No deck yet</h1></div></div>
@@ -2740,6 +2821,35 @@ function subTotals(id) {
   for (const d of ids) { const st = deckStats(d); total += st.total; due += st.due; sum += st.mastery * st.total; }
   return { decks: ids.length, total, due, m: total ? sum / total : 0 };
 }
+/* ----- exam countdowns ----- */
+const examLeft = n => n < 0 ? (n === -1 ? 'yesterday' : -n + ' days ago') : n === 0 ? 'today' : n === 1 ? 'tomorrow' : 'in ' + n + ' days';
+function examTicks(n) {
+  if (n < 1 || n > 42) return '';
+  let h = '';
+  for (let i = 0; i < n; i++) h += '<i' + (i % 7 === 6 ? ' class="wk"' : '') + '></i>';
+  return '<div class="cd-ticks" aria-hidden="true">' + h + '</div>';
+}
+// one subject's countdown, across the top of its home
+function examStrip(sid) {
+  const e = examOf(sid);
+  if (!e) return '';
+  const big = e.n < 0 ? 'Done' : e.n === 0 ? 'Today' : String(e.n);
+  return `<section class="cd${e.n < 0 ? ' past' : e.n <= 7 ? ' soon' : ''}" aria-label="${esc(e.name)} exam ${examLeft(e.n)}">
+    <div class="cd-n"><b${e.n > 0 ? '' : ' class="w"'}>${big}</b>${e.n > 0 ? '<span>' + (e.n === 1 ? 'day' : 'days') + ' to go</span>' : ''}</div>
+    <div class="cd-t"><p class="lbl">${esc(e.name)} exam</p><p class="cd-d">${dayName(e.date)}${e.n < 0 ? ', ' + examLeft(e.n) : e.n === 1 ? ', tomorrow' : ''}</p></div>
+    <button class="btn sm ghost cd-edit" data-act="sub-edit" data-id="${sid}" aria-label="Change the exam date">${ic('edit')}</button>
+    ${examTicks(e.n)}
+  </section>`;
+}
+// every subject's countdown, soonest first, on the All home
+function examBoard() {
+  const list = examList();
+  if (!list.length) return '';
+  const next = list[0].n >= 0 ? list[0] : null, flat = S.profile.prefs.flat;
+  return `<section class="sec cdboard" aria-label="Exam countdowns"><div class="sec-h"><h2>Exams</h2>${next ? `<span class="lbl">Next: ${esc(next.name)}, ${dayName(next.date)}</span>` : ''}</div>
+    <div class="cdgrid">${list.map((e, i) => `<button class="extile${e.n < 0 ? ' past' : ''}${next && i === 0 ? ' next' : ''}" data-act="sub" data-id="${e.sid}" style="${subStyle(e.c, flat)}" aria-label="${esc(e.name)} exam ${examLeft(e.n)}, ${dayName(e.date)}">
+      <span class="lbl">${esc(e.name)}</span><span class="extile-n"><b${e.n > 0 ? '' : ' class="w"'}>${e.n < 0 ? 'Done' : e.n === 0 ? 'Today' : e.n}</b>${e.n > 0 ? '<em>' + (e.n === 1 ? 'day' : 'days') + '</em>' : ''}</span><span class="extile-s">${dayName(e.date)}</span></button>`).join('')}</div></section>`;
+}
 function viewOverview() {
   const flat = S.profile.prefs.flat, subs = subIds();
   const card = (id, name, c) => {
@@ -2751,6 +2861,7 @@ function viewOverview() {
   };
   return `${notices()}<div class="home">
   <section class="sec over">
+    ${examBoard()}
     <div class="page-h"><div><p class="lbl">All subjects</p><h1>Pick a subject</h1></div><button class="btn" data-act="sub-add">${ic('plus')}Add a subject</button></div>
     <div class="subgrid">${subs.map(id => card(id, S.subs[id].name, S.subs[id].c)).join('')}${deckIds('_').length ? card('_', 'Unsorted', '') : ''}</div>
   </section>
@@ -2765,6 +2876,7 @@ function viewHome() {
   const head = sub ? esc(subName(sub)) : 'All decks';
   if (!ids.length) {
     return `${notices()}<div class="home">
+    ${examStrip(sub)}
     <section class="hero">
       <canvas class="hero-art" data-bolt="sub-${sub}" data-g="0"></canvas>
       <div class="hero-in">
@@ -2782,6 +2894,7 @@ function viewHome() {
   const cta = st.due ? 'Continue \u00b7 ' + st.due + ' due' : st.fresh ? 'Continue \u00b7 ' + st.fresh + ' new' : 'Keep sharp';
   const weak = weakTopics(did), strong = strongTopics(did);
   return `${notices()}<div class="home">
+  ${examStrip(sub)}
   <section class="hero" aria-label="Active deck">
     <canvas class="hero-art" data-bolt="${did}" data-g="${st.mastery.toFixed(3)}"></canvas>
     <div class="hero-ghost" aria-hidden="true" data-count="${pct(st.mastery)}">${pct(st.mastery)}<i>%</i></div>
@@ -3059,9 +3172,13 @@ function viewPrefs() {
       <p class="note">Gradient or flat applies everywhere, subjects included.</p>
     </section>
     <section class="pref"><h3>Light</h3><div class="chips">${chip('Match Claude', p.look === 'auto', 'pf-look', 'data-v="auto"')}${chip('Dark', p.look === 'dark', 'pf-look', 'data-v="dark"')}${chip('Light', p.look === 'light', 'pf-look', 'data-v="light"')}</div></section>
+    <section class="pref"><h3>Motion</h3>
+      <div class="chips">${chip('On', p.motion === true, 'pf-motion', 'data-v="on"')}${chip('Follow this device', p.motion !== true && p.motion !== false, 'pf-motion', 'data-v="auto"')}${chip('Off', p.motion === false, 'pf-motion', 'data-v="off"')}</div>
+      <p class="note">${sysCalm() ? (p.motion === true ? 'This device asks apps to reduce motion. On overrules that, so everything animates here anyway.' : p.motion === false ? 'Everything stays still.' : 'This device asks apps to reduce motion, so the screen stays still here. Choose On to animate anyway. On Windows the device setting is Settings, Accessibility, Visual effects, Animation effects.')
+    : (p.motion === false ? 'Everything stays still.' : 'Hover tilt, lightning and BOLT\u2019s face all move. Off gives a still screen.')}</p></section>
     <section class="pref"><h3>Rewards</h3>
-      <div class="chips">${chip('Animation', p.motion, 'pf-toggle', 'data-k="motion"')}${chip('Sound', p.sound, 'pf-toggle', 'data-k="sound"')}${chip('Vibration', p.haptic, 'pf-toggle', 'data-k="haptic"')}</div>
-      <p class="note">A right answer discharges in a burst of lightning, with an optional zap. Turn animation off for a still screen.</p></section>
+      <div class="chips">${chip('Sound', p.sound, 'pf-toggle', 'data-k="sound"')}${chip('Vibration', p.haptic, 'pf-toggle', 'data-k="haptic"')}</div>
+      <p class="note">A right answer discharges in a burst of lightning, with an optional zap.</p></section>
     <section class="pref"><h3>Daily goal</h3><div class="chips">${[10, 20, 30, 50, 100].map(n => chip(n + ' answers', goal === n, 'pf-goal', 'data-n="' + n + '"')).join('')}</div></section>
     <section class="pref"><h3>Marking typed answers</h3>
       <div class="chips">${chip('Strict', p.typo === 'strict', 'pf-typo', 'data-v="strict"')}${chip('Balanced', p.typo === 'balanced', 'pf-typo', 'data-v="balanced"')}${chip('Generous', p.typo === 'generous', 'pf-typo', 'data-v="generous"')}</div>
@@ -3729,12 +3846,13 @@ function darkNow() {
 }
 function applyLook(force) {
   const p = S.profile.prefs, r = document.documentElement, sj = S.subs[curSub()], c = sj && okHex(sj.c) ? sj.c : '';
-  const sig = [p.look, p.a1, p.a2, p.flat, p.motion, c, r.classList.contains('ambient'), r.getAttribute('data-theme'), window.matchMedia && window.matchMedia('(prefers-color-scheme: dark)').matches].join('|');
+  const sig = [p.look, p.a1, p.a2, p.flat, p.motion, sysCalm(), c, r.classList.contains('ambient'), r.getAttribute('data-theme'), window.matchMedia && window.matchMedia('(prefers-color-scheme: dark)').matches].join('|');
   if (sig === lookSig && !force) return;
   lookSig = sig;
   r.classList.toggle('look-dark', p.look === 'dark');
   r.classList.toggle('look-light', p.look === 'light');
-  r.classList.toggle('calm', !p.motion);
+  r.classList.toggle('calm', calm());
+  r.classList.toggle('move', p.motion === true);
   // the subject in view themes everything; the base colour covers the All tab and unsorted decks
   const a1 = c || p.a1, a2 = p.flat ? a1 : (c ? partner(c) : p.a2), on = onColor(a1, a2);
   r.style.setProperty('--a1', a1);
@@ -3794,12 +3912,12 @@ function subjectSheet(id) {
   const acts = [];
   if (s) acts.push({ label: 'Delete', cls: 'danger', fn: () => confirmSheet('Delete ' + s.name + '?', 'The tab goes away. Its ' + plural(deckIds(id).length, 'deck') + ' and all progress are kept and move to Unsorted.', 'Delete subject', async () => { closeSheet(); await Store.deleteSub(id); applyLook(); render(); toast('Subject deleted'); }, true) });
   acts.push({ label: 'Cancel', cls: 'ghost' }, { label: s ? 'Save' : 'Add subject', cls: 'pri', fn: () => {
-    const name = str($('#sj-name').value, 32);
+    const name = str($('#sj-name').value, 32), ex = $('#sj-exam').value, exam = okDate(ex) ? ex : '';
     if (!name) { toast('Give the subject a name.'); return false; }
     closeSheet();
-    if (s) { s.name = name; s.c = c; Store.saveSub(id); applyLook(true); render(); return; }
+    if (s) { s.name = name; s.c = c; if (exam) s.exam = exam; else delete s.exam; Store.saveSub(id); applyLook(true); render(); return; }
     const nid = mkid('j'), order = subIds().reduce((m, x) => Math.max(m, S.subs[x].o || 0), -1) + 1;
-    S.subs[nid] = { k: 'sub', id: nid, name, c, o: order, t: now() };
+    S.subs[nid] = Object.assign({ k: 'sub', id: nid, name, c, o: order, t: now() }, exam ? { exam } : null);
     Store.saveSub(nid);
     selectSub(nid);
   } });
@@ -3809,6 +3927,8 @@ function subjectSheet(id) {
       <label class="field"><span class="lbl">Name</span><input class="inp" id="sj-name" maxlength="32" value="${esc(s ? s.name : '')}" placeholder="Chemistry"></label>
       <div class="field"><span class="lbl">Colour</span><div class="swatches" id="sj-sw"></div><label class="color"><input type="color" id="sj-c">Any other colour</label></div>
       <p class="note">The subject gets its own tab, and everything inside it takes this colour.</p>
+      <div class="field"><label class="lbl" for="sj-exam">Exam date</label><div class="chips" style="align-items:center"><input class="inp" type="date" id="sj-exam" style="width:auto;flex:1 1 170px" value="${s && okDate(s.exam) ? s.exam : ''}"><button class="link" type="button" data-act="sj-noexam">No date</button></div>
+        <p class="note">Counts down on this subject's home and on the All home, and BOLT plans around it.</p></div>
       ${s ? `<div class="chips" style="align-items:center"><button class="btn sm" data-act="sub-syl" data-id="${id}">${ic('file')}${s.syl ? 'Edit syllabus' : 'Add the HSC syllabus'}</button><span class="note">${s.syl ? Number(s.syl).toLocaleString() + ' characters on file' : 'BOLT marks against it once it is here'}</span></div>` : ''}`,
     onOpen: paint, setC(x) { if (okHex(x)) { c = x; paint(); } }, acts
   });
@@ -4655,6 +4775,7 @@ const ACT = {
   'sub-edit': el => subjectSheet(el.dataset.id),
   'sub-syl': el => editSubSyllabus(el.dataset.id),
   'sj-color': el => { if (UI.sheet && UI.sheet.setC) UI.sheet.setC(el.dataset.c); },
+  'sj-noexam': () => { const el = $('#sj-exam'); if (el) el.value = ''; },
   'nd-sub': el => { const id = el.dataset.id; UI.nd.sub = id; S.profile.sub = id || null; Store.touchActive(); applyLook(); paintSubs(); paintNewDeck(); },
   'deck-move': el => { const did = UI.lib.did, d = S.decks[did], id = el.dataset.id; if (!d) return; if (S.subs[id]) d.sub = id; else delete d.sub; Store.saveDeck(did); setActive(did); followDeck(did); render(); toast(S.subs[id] ? 'Moved to ' + S.subs[id].name : 'Moved out of its subject'); },
   'lib-back': () => { UI.lib = { mode: 'list', did: null, q: '' }; UI.nd = null; render(true); $('#main').scrollTop = 0; },
@@ -4685,6 +4806,9 @@ const ACT = {
   'pf-preset': el => { const k = el.dataset.k, p = PRESETS[k]; setPref({ preset: k, a1: p[0], a2: p[1] }); },
   'pf-flat': el => setPref({ flat: el.dataset.v === '1' }),
   'pf-look': el => setPref({ look: el.dataset.v }),
+  'pf-motion': el => { const v = el.dataset.v; setPref({ motion: v === 'on' ? true : v === 'off' ? false : 'auto' }); syncFaces(); },
+  'motion-on': () => { setPref({ motion: true }); syncFaces(); toast('Animations on, on every device'); },
+  'motion-keep': () => { try { localStorage.setItem('rime:calmok', '1'); } catch (e) {} UI.calmOk = true; render(); },
   'pf-toggle': el => { const k = el.dataset.k, v = !S.profile.prefs[k]; setPref({ [k]: v }); if (k === 'sound' && v) ping(true); },
   'pf-goal': el => { S.profile.goal = Number(el.dataset.n); Store.touchPrefs(); render(); },
   'pf-typo': el => setPref({ typo: el.dataset.v }),
@@ -4769,7 +4893,13 @@ document.addEventListener('drop', e => {
 });
 window.addEventListener('hashchange', onRoute);
 window.addEventListener('resize', debounce(() => drawBolts(), 180));
-document.addEventListener('visibilitychange', () => { if (document.hidden) Store.flush(); });
+document.addEventListener('visibilitychange', () => { if (document.hidden) Store.flush(); else newDay(); });
+// countdowns and the daily goal turn over at midnight, even on a page left open
+let dayShown = dayKey();
+function newDay() { const k = dayKey(); if (k !== dayShown) { dayShown = k; softRender(); } }
+setInterval(newDay, 60000);
+// the device's motion setting can change while the page is open
+try { window.matchMedia('(prefers-reduced-motion: reduce)').addEventListener('change', () => { applyLook(true); syncFaces(); softRender(); }); } catch (e) {}
 window.addEventListener('pagehide', () => Store.flush());
 
 /* ----- boot ----- */

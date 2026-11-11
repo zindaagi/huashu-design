@@ -6,7 +6,7 @@
      d_<deck>           deck record            p_<deck>   per-question memory state
      d_<deck>/cards/*   question bank chunks   d_<deck>/src/*   source text parts   d_<deck>/les/*   lesson chats
    Local: the same shape in localStorage, used when no account storage is available. */
-const PREF0 = { look: 'auto', preset: 'storm', a1: '#7a6bff', a2: '#31c4ff', flat: false, motion: true, sound: false, haptic: true, pace: 'quick', typo: 'balanced' };
+const PREF0 = { look: 'auto', preset: 'storm', a1: '#7a6bff', a2: '#31c4ff', flat: false, motion: 'auto', sound: false, haptic: true, pace: 'quick', typo: 'balanced' };
 const STUDY0 = { mode: 'endless', len: 10, mc: true, sa: true, focus: 'adaptive', topup: true };
 const profile0 = () => ({ v: 1, days: {}, goal: 30, prefs: { ...PREF0 }, pt: 0, active: null, sub: null, act: {}, study: { ...STUDY0 }, at: 0, sessions: [] });
 const CHUNK = 100, PART = 60000, SRC_MAX = 600000;
@@ -415,6 +415,15 @@ function bestStreak() {
 /* subjects: '_' stands for decks that belong to no (existing) subject */
 const subIds = () => Object.keys(S.subs).sort((a, b) => ((S.subs[a].o || 0) - (S.subs[b].o || 0)) || ((S.subs[a].t || 0) - (S.subs[b].t || 0)));
 const subOf = d => d && d.sub && S.subs[d.sub] ? d.sub : '_';
+/* exam countdowns: soonest first, and exams already sat go to the end */
+function examOf(sid) {
+  const s = S.subs[sid];
+  return s && okDate(s.exam) ? { sid, name: s.name, c: s.c, date: s.exam, n: daysTo(s.exam) } : null;
+}
+function examList() {
+  const all = subIds().map(examOf).filter(Boolean);
+  return all.filter(e => e.n >= 0).sort((a, b) => a.n - b.n).concat(all.filter(e => e.n < 0).sort((a, b) => b.n - a.n));
+}
 function deckIds(sub) {
   let ids = Object.keys(S.decks);
   if (sub) ids = ids.filter(id => subOf(S.decks[id]) === sub);

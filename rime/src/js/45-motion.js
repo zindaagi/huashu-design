@@ -49,7 +49,8 @@ const TILT = [['.stab', 14], ['.deck', 10], ['.subcard', 9], ['.sj-prev', 6], ['
     seen = false;
   };
   document.addEventListener('pointermove', e => {
-    if (e.pointerType !== 'mouse' || !fine.matches) return;
+    // a real mouse is enough: touch-screen laptops can report a coarse main pointer while a mouse is in use
+    if (e.pointerType !== 'mouse') return;
     if (calm()) { if (cur || seen) leave(); return; }
     ev = e;
     if (!raf) raf = requestAnimationFrame(frame);

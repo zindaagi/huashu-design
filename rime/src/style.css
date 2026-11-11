@@ -129,6 +129,9 @@ svg{display:block}
 .note{font-size:13.5px;color:var(--fg2);max-width:62ch}
 .banner{display:flex;gap:10px;align-items:flex-start;padding:10px 12px;border:1px solid var(--line2);border-radius:var(--r);font-size:13px;color:var(--fg2);background:var(--panel)}
 .banner .i{color:var(--warn);margin-top:1px}
+.banner.quiet{flex-wrap:wrap;align-items:center}
+.banner.quiet .i{color:var(--ink);margin-top:0}
+.banner.quiet>span:first-of-type{flex:1 1 240px;min-width:0}
 
 /* ---------- hero ---------- */
 .hero{position:relative;overflow:hidden;display:flex;min-height:308px;background:var(--grad);color:var(--on);clip-path:polygon(0 0,calc(100% - 28px) 0,100% 28px,100% 100%,28px 100%,0 calc(100% - 28px))}
@@ -156,8 +159,8 @@ svg{display:block}
 .duo{display:grid;gap:22px;grid-template-columns:repeat(auto-fit,minmax(min(100%,300px),1fr))}
 @media (min-width:1120px){
   .home{grid-template-columns:minmax(0,1fr) 316px;align-items:start}
-  .home>.side{grid-column:2;grid-row:1 / span 4}
-  .home>.hero,.home>.duo,.home>.decks,.home>.how,.home>.over{grid-column:1}
+  .home>.side{grid-column:2;grid-row:1 / span 5}
+  .home>.cd,.home>.hero,.home>.duo,.home>.decks,.home>.how,.home>.over{grid-column:1}
 }
 .goal{display:grid;grid-template-columns:76px minmax(0,1fr);gap:14px;align-items:center}
 .ring{position:relative;width:76px;height:76px}
@@ -393,6 +396,41 @@ svg{display:block}
 @keyframes facepop{0%{transform:scale(1)}35%{transform:scale(1.2) rotate(-5deg)}70%{transform:scale(.96) rotate(2deg)}100%{transform:scale(1)}}
 @keyframes bub{from{opacity:0;transform:translateY(8px) scale(.96)}}
 
+/* ---------- exam countdowns ---------- */
+.cd{position:relative;display:grid;grid-template-columns:auto minmax(0,1fr);align-items:center;gap:12px 18px;min-width:0;padding:14px 50px 14px 16px;background:var(--panel);border:1px solid var(--line);border-left:3px solid var(--a1);border-radius:var(--r)}
+.cd-n{display:flex;align-items:baseline;gap:8px}
+.cd-n b{font:800 54px/.82 var(--fd);letter-spacing:.01em;text-transform:uppercase;font-variant-numeric:tabular-nums}
+.cd-n b.w{font-size:38px;line-height:1}
+.cd.soon .cd-n b{color:var(--ink,var(--a1))}
+.cd-n span{font:500 11px/1.2 var(--fm);letter-spacing:.08em;text-transform:uppercase;color:var(--fg2)}
+.cd-t{min-width:0}
+.cd-d{font:700 21px/1.05 var(--fd);text-transform:uppercase;letter-spacing:.03em;margin-top:3px}
+.cd .cd-edit{position:absolute;top:8px;right:8px;min-width:36px;min-height:36px;padding:0 8px;color:var(--mute)}
+.cd .cd-edit:hover{color:var(--fg)}
+.cd-ticks{grid-column:1 / -1;display:flex;flex-wrap:wrap;gap:5px 3px}
+.cd-ticks i{width:3px;height:12px;background:var(--a1);transform:skewX(-16deg)}
+.cd-ticks i.wk{margin-right:8px}
+.cd.past{border-left-color:var(--line2)}
+.cd.past .cd-n b{color:var(--mute)}
+.cdboard{gap:12px}
+.cdgrid{display:grid;grid-template-columns:repeat(auto-fit,minmax(min(100%,92px),1fr));gap:10px}
+.extile{position:relative;display:flex;flex-direction:column;gap:8px;min-width:0;padding:11px 11px 12px;text-align:left;background:var(--panel);border:1px solid var(--line);border-top:2px solid var(--c);border-radius:var(--r);transition:border-color .12s,filter .12s,transform .15s cubic-bezier(.2,.8,.2,1)}
+/* two lines kept for the name, so the numbers line up from tile to tile */
+.extile .lbl{display:-webkit-box;-webkit-box-orient:vertical;-webkit-line-clamp:2;overflow:hidden;min-height:2.5em;line-height:1.25;letter-spacing:.07em;overflow-wrap:anywhere}
+.extile-n{display:flex;flex-wrap:wrap;align-items:baseline;gap:0 5px;margin-top:auto}
+.extile b{font:800 46px/.84 var(--fd);letter-spacing:.01em;text-transform:uppercase;font-variant-numeric:tabular-nums}
+.extile b.w{font-size:27px;line-height:1.43}
+.extile em{font:500 10px/1 var(--fm);font-style:normal;letter-spacing:.07em;text-transform:uppercase;color:var(--fg2)}
+.extile-s{font:400 10.5px/1.25 var(--fm);letter-spacing:.05em;text-transform:uppercase;color:var(--fg2);white-space:nowrap}
+.extile:hover{border-color:var(--c)}
+.extile:focus-visible{outline:2px solid var(--c);outline-offset:2px}
+.extile.next{background:linear-gradient(135deg,var(--c),var(--c2));border-color:transparent;color:var(--co)}
+.extile.next .lbl,.extile.next .extile-s,.extile.next em{color:color-mix(in srgb,var(--co) 84%,transparent)}
+.extile.next:hover{filter:brightness(1.08)}
+.extile.past{opacity:.55}
+@media (hover:hover) and (pointer:fine){.extile:hover{transform:translateY(-2px)}}
+@media (max-width:420px){.cd{gap:10px 14px}.cd-n b{font-size:46px}}
+
 /* the switch under a quiz question: what the next one will be */
 .nextfmt{display:flex;flex-wrap:wrap;align-items:center;justify-content:center;gap:8px 12px}
 .seg{display:inline-flex;max-width:100%;border:1px solid var(--line2);border-radius:var(--r);overflow:hidden;background:var(--sunk)}
@@ -564,4 +602,5 @@ details.more>*:not(summary){margin-top:8px}
 @keyframes blink{0%,100%{opacity:.25}50%{opacity:1}}
 @keyframes spin{to{transform:rotate(360deg)}}
 .calm *,.calm *::after,.calm *::before{animation-duration:.001ms!important;animation-iteration-count:1!important;transition-duration:.001ms!important}
-@media (prefers-reduced-motion:reduce){*,*::after,*::before{animation-duration:.001ms!important;animation-iteration-count:1!important;transition-duration:.001ms!important}}
+/* the device's wish for less motion holds unless Motion is set to On in the app (:root.move) */
+@media (prefers-reduced-motion:reduce){:root:not(.move) *,:root:not(.move) *::after,:root:not(.move) *::before{animation-duration:.001ms!important;animation-iteration-count:1!important;transition-duration:.001ms!important}}

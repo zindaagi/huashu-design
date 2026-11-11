@@ -83,7 +83,10 @@ function drawBolt(cv, key, g, o) {
   // a passing flash: the whole channel lights for a moment, whatever the charge
   if (o.flash > 0) { ctx.globalAlpha = Math.min(1, o.flash); strokeBolt(ctx, sp, w, h, o.reach == null ? 1 : o.reach, lw * 1.3); ctx.globalAlpha = 1; }
 }
-const calm = () => !S.profile.prefs.motion || (window.matchMedia && window.matchMedia('(prefers-reduced-motion: reduce)').matches);
+/* Motion is the app's own setting: on (true), off (false), or 'auto', which follows the device.
+   Windows reports "reduce motion" whenever its Animation effects switch is off, so On has to be able to overrule it. */
+const sysCalm = () => !!(window.matchMedia && window.matchMedia('(prefers-reduced-motion: reduce)').matches);
+const calm = () => { const m = S.profile.prefs.motion; return m === false || (m !== true && sysCalm()); };
 function growBolt(cv, key, from, to, ms) {
   if (calm()) return drawBolt(cv, key, to);
   const t0 = performance.now();
