@@ -25,6 +25,7 @@ function applyLook(force) {
   r.style.setProperty('--ink', readable(a1, getComputedStyle(r).getPropertyValue('--bg').trim() || '#0a0e14'));
   try { localStorage.setItem('rime:look', JSON.stringify({ look: p.look, a1: p.a1, a2: p.a2, flat: p.flat, motion: p.motion, preset: p.preset })); } catch (e) {}
   drawBolts();
+  syncFaces();
 }
 
 /* ----- subjects ----- */
@@ -80,7 +81,8 @@ function subjectSheet(id) {
     html: `<div class="sj-prev" id="sj-prev">${ic('bolt')}<b id="sj-prev-name">${esc(s ? s.name : 'New subject')}</b></div>
       <label class="field"><span class="lbl">Name</span><input class="inp" id="sj-name" maxlength="32" value="${esc(s ? s.name : '')}" placeholder="Chemistry"></label>
       <div class="field"><span class="lbl">Colour</span><div class="swatches" id="sj-sw"></div><label class="color"><input type="color" id="sj-c">Any other colour</label></div>
-      <p class="note">The subject gets its own tab, and everything inside it takes this colour.</p>`,
+      <p class="note">The subject gets its own tab, and everything inside it takes this colour.</p>
+      ${s ? `<div class="chips" style="align-items:center"><button class="btn sm" data-act="sub-syl" data-id="${id}">${ic('file')}${s.syl ? 'Edit syllabus' : 'Add the HSC syllabus'}</button><span class="note">${s.syl ? Number(s.syl).toLocaleString() + ' characters on file' : 'BOLT marks against it once it is here'}</span></div>` : ''}`,
     onOpen: paint, setC(x) { if (okHex(x)) { c = x; paint(); } }, acts
   });
 }
@@ -174,10 +176,11 @@ async function submitTyped(text) {
   if (v.kind !== 'unsure') return settle(v);
   if (!aiOK()) { c.state = 'self'; return paintAnswer(false); }
   c.state = 'checking';
+  setFace('think');
   paintAnswer(false);
   const live = () => UI.sess === s && s.cur === c && c.state === 'checking';
   try {
-    const r = await aiJudge(c.card, text);
+    const r = await aiJudge(c.card, text, undefined, (S.subs[subOf(S.decks[s.did])] || {}).name || '');
     if (!live()) return;
     settle(r.verdict === 'correct' ? { g: 3, kind: 'correct', note: r.note } : r.verdict === 'close' ? { g: 1, kind: 'close', note: r.note } : { g: 0, kind: 'wrong', note: r.note });
   } catch (e) {
@@ -188,9 +191,11 @@ async function submitTyped(text) {
   }
 }
 function settle(v) {
-  const c = UI.sess.cur;
+  const s = UI.sess, c = s.cur;
   c.state = 'done'; c.verdict = v;
   applyResult(v.g);
+  // BOLT's face says what he thinks of that
+  setFace(v.g >= 2 ? (s.streak > 0 && s.streak % 5 === 0 ? 'shock' : c.fmt === 'sa' ? 'hype' : 'smirk') : v.g === 1 ? 'sideeye' : 'oof', 2800);
   paintAnswer(true);
 }
 function applyResult(g) {
@@ -237,7 +242,7 @@ function selfMark(g) {
 function paintAnswer(celebrate) {
   const s = UI.sess, c = s.cur;
   const top = $('#run-top');
-  if (top) top.innerHTML = runTopHTML(s);
+  if (top) { top.innerHTML = runTopHTML(s); drawFaces(top); }
   let anchor = null;
   if (c.fmt === 'mc') {
     const box = $('#opts');
@@ -260,7 +265,7 @@ function paintAnswer(celebrate) {
     if (idk) idk.hidden = c.state !== 'ask';
   }
   const fb = $('#fb');
-  if (fb) fb.innerHTML = fbHTML(c);
+  if (fb) { fb.innerHTML = fbHTML(c); drawFaces(fb); }
   if (c.state === 'done' && celebrate) reward(c, anchor);
   if (c.state === 'done' && c.fmt === 'mc' && !coarse()) { const nb = $('#next-btn'); if (nb) nb.focus({ preventScroll: true }); }
   if (c.state !== 'ask' && fb) {
@@ -325,7 +330,7 @@ async function generate(did, o) {
   paintBuild();
   let before = -1;
   try {
-    const src = await Store.loadSrc(did), cards = await Store.loadCards(did), meta = S.decks[did];
+    const src = await Store.loadSrc(did), cards = await Store.loadCards(did), meta = S.decks[did], course = await courseOf(did);
     before = cards.length;
     const material = o.text != null ? o.text : src.parts.map(p => '## ' + p.name + '\n' + p.text).join('\n\n');
     if (!material.trim()) throw { code: 'no_material' };
@@ -338,8 +343,9 @@ async function generate(did, o) {
       if (want <= 0) break;
       b.msg = calls > 1 ? 'Writing from part ' + (k + 1) + ' of ' + calls : 'Writing questions';
       paintBuild();
+      const sec = secs[(start + Math.floor(k * secs.length / calls)) % secs.length];
       await aiGenerate({
-        material: secs[(start + Math.floor(k * secs.length / calls)) % secs.length], syllabus: src.syllabus, n: want,
+        material: sec, syllabus: syllabusText(course, meta.name + ' ' + sec, 9000), subject: course.subject, n: want,
         focus: o.focus || '', topics: o.topics || [], lessonTitle: o.lessonTitle || '',
         existing: cards.slice(-50).map(c => c.q), topicNames: Array.from(new Set(cards.map(c => c.topic))).slice(0, 30), signal: b.ctl.signal,
         onCard: raw => {
@@ -686,10 +692,10 @@ async function lessonQuiz() {
 /* ----- BOLT ----- */
 const Chat = { open: false, thread: null, busy: false, ctl: null, err: '', quiz: null, free: {} };
 function quickPrompts(th) {
-  if (th.kind === 'quiz') { const c = th.cur && th.cur(); return c && c.state === 'done' ? ['Why is that the answer?', 'Give me a similar example', 'How do I remember this?'] : ['Give me a hint', 'Explain the idea behind this', 'Reveal the answer and explain']; }
-  if (th.kind === 'lesson') return ['Give me an example', 'Explain that more simply', 'Test me on this'];
+  if (th.kind === 'quiz') { const c = th.cur && th.cur(); return c && c.state === 'done' ? ['Critique my answer', 'How would the HSC ask this?', 'Give me a similar one'] : ['Give me a hint', 'Explain the idea behind this', 'Reveal the answer and explain']; }
+  if (th.kind === 'lesson') return ['Give me an example', 'Explain that more simply', 'How is this examined?'];
   if (th.kind === 'review') return ['What pattern do you see in my mistakes?', 'Re-teach the hardest one'];
-  return ['What should I focus on?', 'Explain my weakest topic', 'Quiz me out loud'];
+  return ['What should I focus on?', 'Explain my weakest topic', 'What does the syllabus want here?'];
 }
 function openChat(th) {
   if (Chat.ctl) Chat.ctl.abort();
@@ -697,12 +703,16 @@ function openChat(th) {
   const el = $('#mc'), wide = th.kind === 'lesson';
   el.classList.add('open'); el.classList.toggle('wide', wide); el.setAttribute('aria-hidden', 'false');
   $('#app').classList.add('chat-open'); $('#app').classList.toggle('chat-wide', wide);
+  setFace('smirk');
   paintChat();
   if (!coarse()) $('#mc-in').focus();
 }
 function closeChat() {
   if (Chat.ctl) Chat.ctl.abort();
   Chat.open = false;
+  // hand the keyboard back: focus left in the hidden chat box would swallow Enter and the number keys
+  const ae = document.activeElement;
+  if (ae && $('#mc').contains(ae)) ae.blur();
   $('#mc').classList.remove('open'); $('#mc').setAttribute('aria-hidden', 'true');
   $('#app').classList.remove('chat-open', 'chat-wide');
   if (UI.route === 'learn' && !UI.sess) render();
@@ -711,28 +721,57 @@ function closeChat() {
 function defaultThread() {
   if (UI.sess && UI.route === 'study') return Chat.quiz || (Chat.quiz = { kind: 'quiz', did: UI.sess.did, turns: [], cur: () => UI.sess && UI.sess.cur });
   const did = (UI.route === 'learn' && UI.learn) || (UI.route === 'library' && UI.lib.mode === 'deck' && UI.lib.did) || activeDeck() || '';
-  return Chat.free[did] || (Chat.free[did] = { kind: 'free', did: did || null, turns: [] });
+  const sub = curSub(), key = did || ('sub:' + (sub || ''));
+  return Chat.free[key] || (Chat.free[key] = { kind: 'free', did: did || null, sub: S.subs[sub] ? sub : null, turns: [] });
 }
+/* one of BOLT's texts: his face as he says it, then the bubble */
+const botText = (x, cls) => '<div class="txt ai' + (cls || '') + '">' + faceHTML('sm', { mood: false, face: x.expr }) + '<div class="bub prose">' + md(x.text) + '</div></div>';
 function paintChat() {
   const th = Chat.thread;
   if (!th) return;
-  $('#mc-ctx').textContent = th.kind === 'quiz' ? 'On your current question' : th.kind === 'lesson' ? th.title : th.kind === 'review' ? 'Going over your misses' : th.did && S.decks[th.did] ? S.decks[th.did].name : 'Your teacher';
+  const sj = th.did && S.decks[th.did] ? S.subs[subOf(S.decks[th.did])] : S.subs[th.sub];
+  $('#mc-ctx').textContent = th.kind === 'quiz' ? 'on your current question' : th.kind === 'lesson' ? th.title : th.kind === 'review' ? 'going over your misses' : th.did && S.decks[th.did] ? S.decks[th.did].name : sj ? sj.name : 'online, allegedly studying';
   const tools = $('#mc-tools'), l = lessonOf(th);
   tools.hidden = th.kind !== 'lesson';
   tools.innerHTML = th.kind === 'lesson' ? `<button class="btn sm" data-act="lesson-quiz" ${Chat.busy ? 'disabled' : ''}>${ic('bolt')}Quiz me on this</button><button class="btn sm" data-act="lesson-done">${ic('check')}${l && l.st === 2 ? 'Done' : 'Mark as done'}</button>` : '';
-  const msgs = th.turns.map(t => t.role === 'user' ? (t.auto ? '' : '<div class="msg me">' + esc(t.content) + '</div>') : '<div class="msg ai"><p class="lbl who">BOLT</p><div class="prose">' + md(t.content) + '</div></div>').join('');
-  const empty = `<div class="mc-empty"><canvas data-bolt="mr-claude" data-g="0.85"></canvas><p>${aiOK() ? (th.kind === 'quiz' ? 'Stuck on this one? Ask for a hint, or for the idea behind it. The answer stays hidden until you ask for it.' : 'Ask about anything in your notes. Answers draw on the material and syllabus in this deck.') : 'BOLT is not available in this view. Open the page inside Claude and allow it to use Claude.'}</p></div>`;
+  const msgs = th.turns.map(t => t.role === 'user'
+    ? (t.auto ? '' : '<div class="txt me"><div class="bub">' + esc(t.content) + '</div></div>')
+    : splitTexts(t.content).filter(x => x.text).map(x => botText(x)).join('')).join('');
+  const hello = !aiOK() ? 'BOLT is not available in this view. Open the page inside Claude and allow it to use Claude.'
+    : th.kind === 'quiz' ? 'stuck? just ask, ill hint before i spoil it' : 'ask me whatever. your notes, the syllabus, why you got that one wrong';
+  const empty = '<div class="mc-empty">' + faceHTML('lg', { look: true }) + '<p>' + hello + '</p></div>';
   const log = $('#mc-log');
   log.innerHTML = (msgs || (Chat.busy ? '' : empty)) +
-    (Chat.busy ? '<div class="msg ai"><p class="lbl who">BOLT</p><div class="prose" id="mc-live"><p class="checking"><span class="dots"><i></i><i></i><i></i></span>Thinking</p></div></div>' : '') +
+    (Chat.busy ? '<div id="mc-live"></div><div class="txt ai typing"><span class="face-gap"></span><div class="bub"><span class="dots"><i></i><i></i><i></i></span></div></div>' : '') +
     (Chat.err ? '<div class="msg err">' + esc(Chat.err) + '</div>' : '');
-  drawBolts(log);
+  drawFaces(log);
   log.scrollTop = log.scrollHeight;
   $('#mc-quick').innerHTML = Chat.busy || !aiOK() ? '' : quickPrompts(th).map(q => `<button class="chip" data-act="chat-quick" data-q="${esc(q)}"><span>${esc(q)}</span></button>`).join('');
   const send = $('#mc-send');
   send.innerHTML = ic(Chat.busy ? 'stop' : 'up');
   send.setAttribute('aria-label', Chat.busy ? 'Stop' : 'Send');
   send.disabled = !aiOK();
+  $('#mc-in').placeholder = aiOK() ? 'text BOLT' : 'BOLT is not available here';
+}
+/* as a reply streams in, finished texts stay put and only the one being typed is redrawn */
+function paintLive(text) {
+  const box = $('#mc-live'), log = $('#mc-log');
+  if (!box) return;
+  const stick = log.scrollHeight - log.scrollTop - log.clientHeight < 90;
+  const all = splitTexts(text, true), shown = all.filter(x => x.text);
+  shown.forEach((x, i) => {
+    let el = box.children[i];
+    if (!el) { box.insertAdjacentHTML('beforeend', botText(x, ' new')); el = box.children[i]; drawFaces(el); }
+    else if (el.dataset.len !== String(x.text.length)) {
+      $('.bub', el).innerHTML = md(x.text);
+      const f = $('.face', el);
+      if (f.dataset.face !== x.expr) { f.dataset.face = x.expr; drawFaces(el); }
+    }
+    el.dataset.len = String(x.text.length);
+  });
+  if (all.length) setFace(all[all.length - 1].expr);
+  talkFace(true);
+  if (stick) log.scrollTop = log.scrollHeight;
 }
 async function chatSend(text, auto) {
   const th = Chat.thread;
@@ -742,35 +781,55 @@ async function chatSend(text, auto) {
   th.turns.push({ role: 'user', content: text, auto: !!auto });
   Chat.busy = true; Chat.err = '';
   const ctl = Chat.ctl = new AbortController();
+  setFace('think');
   paintChat();
   const pace = S.profile.prefs.pace;
   const tier = pace === 'deep' ? 'complex' : pace === 'thorough' || th.kind === 'lesson' ? 'default' : 'quick';
+  let lastExpr = 'smirk';
   try {
     const rules = await chatRules(th, text);
     const hist = th.turns.slice(-14).map(t => ({ role: t.role, content: String(t.content).slice(0, 8000) }));
     const res = await AI.fn([{ role: 'user', content: rules }].concat(hist), {
       cache: false, signal: ctl.signal, modelTier: tier,
-      onText: u => {
-        if (Chat.thread !== th) return;
-        const el = $('#mc-live'), log = $('#mc-log');
-        if (!el) return;
-        const stick = log.scrollHeight - log.scrollTop - log.clientHeight < 80;
-        el.innerHTML = md(u.text);
-        if (stick) log.scrollTop = log.scrollHeight;
-      }
+      onText: u => { if (Chat.thread === th) paintLive(u.text); }
     });
     th.turns.push({ role: 'assistant', content: res.text });
+    const xs = splitTexts(res.text);
+    if (xs.length) lastExpr = xs[xs.length - 1].expr;
     if (res.truncated) Chat.err = 'That reply was cut short. Ask for the rest, or for less at a time.';
   } catch (e) {
     const keep = e && e.code !== 'refused' && e.text ? String(e.text) : '';
     if (keep) th.turns.push({ role: 'assistant', content: keep });
     else if (auto) th.turns.pop();
-    Chat.err = aiErr(e) || (keep ? '' : '');
+    Chat.err = aiErr(e) || '';
+    lastExpr = Chat.err ? 'oof' : 'deadpan';
   }
   Chat.busy = false; Chat.ctl = null;
+  talkFace(false);
+  setFace(lastExpr, 9000);
   if (th.kind === 'lesson' && th.turns.length) Store.saveLesson(th.did, th.lesson.id, th.turns);
   if (Chat.thread === th) paintChat();
   paintRail();
+}
+
+/* ----- a syllabus for the whole subject ----- */
+async function editSubSyllabus(id) {
+  const sj = S.subs[id];
+  if (!sj) return;
+  let text;
+  try { text = await Store.loadSubSyl(id); } catch (e) { toast('The syllabus could not be loaded. Check your connection.'); return; }
+  openSheet({
+    title: sj.name + ' syllabus',
+    html: `<div class="field"><label class="lbl" for="sy-text">HSC syllabus for this subject</label><textarea class="ta" id="sy-text" style="min-height:220px" placeholder="Paste the NESA syllabus for this course, or upload the PDF.">${esc(text)}</textarea>
+      <div><button class="btn sm" data-act="sy-file">${ic('file')}Upload a file</button><input type="file" id="sy-file" hidden accept="${FILE_ACCEPT}"></div></div>
+      <p class="note">BOLT marks, critiques and teaches against this for every deck in ${esc(sj.name)}, and new questions follow it. Without it he goes on what he knows of the course.</p>`,
+    acts: [{ label: 'Cancel', cls: 'ghost' }, { label: 'Save', cls: 'pri', fn: async () => {
+      const v = $('#sy-text').value.trim();
+      closeSheet();
+      try { await Store.setSubSyl(id, v); toast(v ? 'Syllabus saved for ' + sj.name : 'Syllabus removed'); } catch (e) { saveFailed(e); }
+      render();
+    } }]
+  });
 }
 
 /* ----- actions ----- */
@@ -802,7 +861,7 @@ const ACT = {
   override: el => overrideMark(Number(el.dataset.g)),
   self: el => selfMark(Number(el.dataset.g)),
   'ask-claude': () => openChat(defaultThread()),
-  'ask-why': () => { const c = UI.sess && UI.sess.cur; if (!c) return; openChat(defaultThread()); chatSend(c.verdict && c.verdict.g >= 2 ? 'Why is that the answer?' : 'Why is “' + c.card.a + '” the answer, and where did I go wrong?'); },
+  'ask-why': () => { const c = UI.sess && UI.sess.cur; if (!c) return; openChat(defaultThread()); chatSend(c.verdict && c.verdict.g >= 2 ? 'Critique my answer like an HSC marker would, and tell me how this shows up in the exam.' : 'Where did I go wrong, and what would an HSC marker want to see here?'); },
   'end-session': () => finishSession(),
   again: () => startSession(UI.done.cfg),
   'drill-misses': () => { const r = UI.done; startSession({ did: r.did, only: r.misses.map(m => m.id), mode: 'quiz', len: r.misses.length, topics: [] }); },
@@ -821,6 +880,7 @@ const ACT = {
   sub: el => selectSub(el.dataset.id),
   'sub-add': () => subjectSheet(null),
   'sub-edit': el => subjectSheet(el.dataset.id),
+  'sub-syl': el => editSubSyllabus(el.dataset.id),
   'sj-color': el => { if (UI.sheet && UI.sheet.setC) UI.sheet.setC(el.dataset.c); },
   'nd-sub': el => { const id = el.dataset.id; UI.nd.sub = id; S.profile.sub = id || null; Store.touchActive(); applyLook(); paintSubs(); paintNewDeck(); },
   'deck-move': el => { const did = UI.lib.did, d = S.decks[did], id = el.dataset.id; if (!d) return; if (S.subs[id]) d.sub = id; else delete d.sub; Store.saveDeck(did); setActive(did); followDeck(did); render(); toast(S.subs[id] ? 'Moved to ' + S.subs[id].name : 'Moved out of its subject'); },
@@ -948,12 +1008,13 @@ function boot() {
   const links = NAV.map(n => `<a href="#${n[0]}" data-nav="${n[0]}">${ic(n[2])}<span>${n[1]}</span></a>`).join('');
   $('#nav-rail').innerHTML = links;
   $('#nav-tabs').innerHTML = links;
-  $('#top-claude').innerHTML = ic('chat');
+  $('#top-claude').innerHTML = faceHTML('xs');
   $('#mc-close').innerHTML = ic('x');
   $('#mc-send').innerHTML = ic('up');
   try { const c = JSON.parse(localStorage.getItem('rime:look') || 'null'); if (c && typeof c === 'object') Object.assign(S.profile.prefs, c); } catch (e) {}
   applyLook(true);
   drawBolts();
+  drawFaces();
   let shown = false;
   onStore = (kind, code) => {
     if (kind === 'sync') return paintSync();

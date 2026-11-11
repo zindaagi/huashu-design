@@ -136,7 +136,7 @@ function viewHome() {
         <p class="lbl">No decks yet</p>
         <h1 class="hero-name">${head}</h1>
         <p class="hero-sub">Decks you make here stay in this subject. Paste notes or a table and Claude writes the questions.</p>
-        <div class="hero-cta"><button class="btn go lg" data-act="new-deck">${ic('plus')}New deck</button><button class="btn lg" data-act="sample">Try the sample deck</button>${S.subs[sub] ? `<button class="btn lg" data-act="sub-edit" data-id="${sub}">Edit subject</button>` : ''}</div>
+        <div class="hero-cta"><button class="btn go lg" data-act="new-deck">${ic('plus')}New deck</button><button class="btn lg" data-act="sample">Try the sample deck</button>${S.subs[sub] ? `<button class="btn lg" data-act="sub-syl" data-id="${sub}">${S.subs[sub].syl ? 'Syllabus' : 'Add the syllabus'}</button><button class="btn lg" data-act="sub-edit" data-id="${sub}">Edit subject</button>` : ''}</div>
       </div>
     </section>
     <aside class="side">${goalCard()}${activityCard()}</aside>
@@ -171,7 +171,7 @@ function viewHome() {
     <section class="card sec"><div class="sec-h"><h2>Weak spots</h2><span class="lbl">Recall</span></div>${weak.length ? '<div>' + topicRows(weak, true) + '</div>' : '<p class="note">Nothing weak yet. Answer a few questions and the topics that trip you up surface here.</p>'}</section>
     <section class="card sec"><div class="sec-h"><h2>Strengths</h2><span class="lbl">Recall</span></div>${strong.length ? '<div>' + topicRows(strong, false) + '</div>' : '<p class="note">Topics you answer reliably collect here and get asked less often.</p>'}</section>
   </div>
-  <section class="sec decks"><div class="sec-h"><h2>${sub ? head + ' decks' : 'Decks'}</h2><span class="chips">${S.subs[sub] ? `<button class="link" data-act="sub-edit" data-id="${sub}">Edit subject</button>` : ''}<a class="link" href="#library">Manage</a></span></div>
+  <section class="sec decks"><div class="sec-h"><h2>${sub ? head + ' decks' : 'Decks'}</h2><span class="chips">${S.subs[sub] ? `<button class="link" data-act="sub-syl" data-id="${sub}">${S.subs[sub].syl ? 'Syllabus' : 'Add the syllabus'}</button><button class="link" data-act="sub-edit" data-id="${sub}">Edit subject</button>` : ''}<a class="link" href="#library">Manage</a></span></div>
     <div class="deckgrid">${ids.map(id => { const s = deckStats(id); return `<button class="deck${id === did ? ' on' : ''}" data-act="set-active" data-did="${id}" aria-pressed="${id === did}"><canvas data-bolt="${id}" data-g="${s.mastery.toFixed(3)}"></canvas><b>${esc(S.decks[id].name)}</b><span class="lbl">${s.total} q · ${pct(s.mastery)}%</span><div class="meter"><i style="width:${pct(s.mastery)}%"></i></div></button>`; }).join('')}
     <button class="deck add" data-act="new-deck">${ic('plus')}<span class="lbl">New deck</span></button></div>
   </section>
@@ -218,7 +218,7 @@ function viewSetup() {
 }
 function fbHTML(c) {
   if (c.state === 'ask') return '';
-  if (c.state === 'checking') return '<div class="fb"><p class="checking"><span class="dots"><i></i><i></i><i></i></span>BOLT is marking your answer</p></div>';
+  if (c.state === 'checking') return '<div class="fb"><p class="checking">' + faceHTML('xs') + 'BOLT is marking your answer<span class="dots"><i></i><i></i><i></i></span></p></div>';
   const card = c.card, why = card.why ? `<p class="fb-why">${esc(card.why)}</p>` : '';
   if (c.state === 'self') {
     return `<div class="fb"><div class="fb-head"><strong>Compare</strong></div>${c.note ? `<p class="fb-note">${esc(c.note)}</p>` : ''}
@@ -233,7 +233,7 @@ function fbHTML(c) {
     ${note}${showAns ? `<p class="fb-ans"><span class="lbl">Answer</span>${esc(card.a)}</p>` : ''}${why}
     <div class="fb-acts"><button class="btn pri" data-act="next" id="next-btn">Next${ic('arrow')}</button>
       ${c.fmt === 'sa' ? (ok ? '<button class="btn sm" data-act="override" data-g="0">Mark it wrong</button>' : '<button class="btn sm" data-act="override" data-g="3">I was right</button>') : ''}
-      ${aiOK() ? `<button class="btn sm" data-act="ask-why">${ic('chat')}Ask why</button>` : ''}
+      ${aiOK() ? `<button class="btn sm" data-act="ask-why">${faceHTML('xs')}BOLT's take</button>` : ''}
       <button class="btn sm ghost" data-act="card-edit" data-id="${card.id}">${ic('edit')}Edit</button></div></div>`;
 }
 const optCls = (c, i) => c.state === 'ask' ? '' : i === c.right ? ' ok' : i === c.pick ? ' no' : ' dim';
@@ -244,7 +244,7 @@ function runTopHTML(s) {
     ? `<div class="meter"><i style="width:${Math.round(s.n / s.len * 100)}%"></i></div><span class="num">${Math.min(s.n + 1, s.len)}/${s.len}</span>`
     : `<span class="lbl">Endless</span><span class="num">Q${s.n + 1}</span><span class="grow"></span><span class="score" style="font-size:13px" title="Right : wrong"><span class="g">${s.right}</span><i>:</i><span class="b">${s.wrong + s.close}</span></span>`}</div>
     <span class="pill streak-b" id="run-streak" title="Right answers in a row">${ic('spark')}<b>${s.streak}</b></span>
-    <button class="btn sm" data-act="ask-claude" ${aiOK() ? '' : 'disabled'}>${ic('chat')}<span>Ask</span></button>`;
+    <button class="btn sm" data-act="ask-claude" ${aiOK() ? '' : 'disabled'}>${faceHTML('xs')}<span>Ask</span></button>`;
 }
 function viewRun() {
   const s = UI.sess, c = s.cur;
@@ -282,7 +282,7 @@ function viewDone() {
       <div class="chips">
         <button class="btn pri lg" data-act="again">${ic('bolt')}Go again</button>
         ${r.misses.length ? '<button class="btn lg" data-act="drill-misses">Drill the misses</button>' : ''}
-        ${r.misses.length && aiOK() ? `<button class="btn lg" data-act="ask-misses">${ic('chat')}Go over them with BOLT</button>` : ''}
+        ${r.misses.length && aiOK() ? `<button class="btn lg" data-act="ask-misses">${faceHTML('xs')}Go over them with BOLT</button>` : ''}
         <button class="btn lg ghost" data-act="done-home">Home</button>
       </div>
     </section>
@@ -295,19 +295,22 @@ function viewLearn() {
   const ids = scopeIds();
   if (!ids.length) return needDeck('Learn', 'BOLT teaches from your own notes. Add a deck first, with a syllabus if you have one.');
   const did = UI.learn && ids.includes(UI.learn) ? UI.learn : (UI.learn = activeDeck()), d = S.decks[did], plan = d.plan || [];
-  const busy = UI.planBusy === did, sub = curSub();
+  const busy = UI.planBusy === did, sub = curSub(), sj = S.subs[subOf(d)];
   return `<div class="page-h"><div><p class="lbl">Learn with BOLT${sub ? ' · ' + esc(subName(sub)) : ''}</p><h1>${esc(d.name)}</h1></div></div>
   ${ids.length > 1 ? `<div class="chips">${ids.map(id => chip(esc(S.decks[id].name), id === did, 'ln-deck', 'data-did="' + id + '"')).join('')}</div>` : ''}
   ${aiOK() ? '' : `<div class="banner">${ic('warn')}<span>BOLT is not available in this view, so lessons cannot run here. Open the page inside Claude and allow it to use Claude.</span></div>`}
-  <section class="card sec"><div class="sec-h"><h2>Syllabus</h2><button class="btn sm" data-act="syl-edit">${d.syl ? 'Edit' : 'Add syllabus'}</button></div>
-    <p class="note">${d.syl ? Number(d.syl).toLocaleString() + ' characters on file. Lessons and new questions follow its order and wording.' : 'Paste or upload your syllabus and BOLT teaches to it, point by point. Without one, lessons follow the structure of your notes.'}</p></section>
+  <section class="card sec"><div class="sec-h"><h2>Syllabus</h2></div>
+    <div class="list">
+      ${sj ? `<div class="item"><span class="item-q">${esc(sj.name)} syllabus</span><span class="item-a">${sj.syl ? Number(sj.syl).toLocaleString() + ' characters on file. BOLT marks, teaches and writes questions against it for every deck in this subject.' : 'Not added yet. Paste or upload the NESA syllabus once and BOLT marks against it exactly; until then he goes on what he knows of the course.'}</span><span class="item-r"><button class="btn sm${sj.syl ? '' : ' pri'}" data-act="sub-syl" data-id="${sj.id}">${sj.syl ? 'Edit' : 'Add'}</button></span></div>` : ''}
+      <div class="item"><span class="item-q">Just for this deck</span><span class="item-a">${d.syl ? Number(d.syl).toLocaleString() + ' characters of extra dot points or outcomes for this deck.' : 'Optional: the dot points or outcomes this deck covers.'}</span><span class="item-r"><button class="btn sm" data-act="syl-edit">${d.syl ? 'Edit' : 'Add'}</button></span></div>
+    </div></section>
   <section class="sec"><div class="sec-h"><h2>Lesson plan</h2>${plan.length ? `<span class="lbl">${plan.filter(l => l.st === 2).length}/${plan.length} done</span>` : ''}</div>
     ${busy ? '<div class="card"><p class="checking"><span class="dots"><i></i><i></i><i></i></span>BOLT is reading your material and planning lessons</p></div>'
     : plan.length ? `<div class="card"><div class="list">${plan.map((l, i) => `<div class="lesson${l.st === 2 ? ' done' : ''}"><span class="lesson-n">${String(i + 1).padStart(2, '0')}</span><span class="lesson-t">${esc(l.title)}</span><span class="lesson-g">${esc((l.goals || []).join(' · '))}${l.thin ? ' · thin in your notes' : ''}</span><button class="btn sm${l.st === 0 ? ' pri' : ''}" data-act="lesson-open" data-id="${l.id}" ${aiOK() ? '' : 'disabled'}>${l.st === 2 ? 'Revisit' : l.st === 1 ? 'Resume' : 'Start'}</button></div>`).join('')}</div></div>
        <div><button class="btn sm" data-act="plan-build" ${aiOK() ? '' : 'disabled'}>Rebuild the plan</button></div>`
       : `<div class="card sec"><p class="note">BOLT reads your ${d.syl ? 'syllabus and notes' : 'notes'} and lays out short lessons in order. Each one ends with questions to check yourself, and can turn into a quiz.</p><div><button class="btn pri" data-act="plan-build" ${aiOK() ? '' : 'disabled'}>Build the lesson plan</button></div></div>`}
   </section>
-  <section class="card sec"><div class="sec-h"><h2>Office hours</h2></div><p class="note">Ask anything about this deck outside a lesson or a quiz.</p><div><button class="btn" data-act="ask-deck" ${aiOK() ? '' : 'disabled'}>${ic('chat')}Ask BOLT</button></div></section>`;
+  <section class="card sec"><div class="sec-h"><h2>Office hours</h2></div><div class="sj-row">${faceHTML('md', { look: true })}<p class="note">Text BOLT about anything in this deck outside a lesson or a quiz. He critiques your answers the way an HSC marker would.</p></div><div><button class="btn" data-act="ask-deck" ${aiOK() ? '' : 'disabled'}>Text BOLT</button></div></section>`;
 }
 
 /* ----- library ----- */
@@ -400,7 +403,7 @@ function viewPrefs() {
   ${notices()}
   <div class="prefs">
     <section class="pref"><h3>Subjects</h3>
-      ${subs.length ? `<div class="list">${subs.map(id => { const s = S.subs[id]; return `<div class="item"><span class="item-q sj-row" style="${subStyle(s.c, flat)}"><i></i>${esc(s.name)}</span><span class="item-a">${plural(deckIds(id).length, 'deck')}</span><span class="item-r"><button class="btn sm" data-act="sub-edit" data-id="${id}">${ic('edit')}Edit</button></span></div>`; }).join('')}</div>` : '<p class="note">No subjects yet. Each one gets its own tab, colour and decks.</p>'}
+      ${subs.length ? `<div class="list">${subs.map(id => { const s = S.subs[id]; return `<div class="item"><span class="item-q sj-row" style="${subStyle(s.c, flat)}"><i></i>${esc(s.name)}</span><span class="item-a">${plural(deckIds(id).length, 'deck')} · ${s.syl ? 'syllabus on file' : 'no syllabus yet'}</span><span class="item-r"><button class="btn sm" data-act="sub-syl" data-id="${id}">Syllabus</button><button class="btn sm" data-act="sub-edit" data-id="${id}">${ic('edit')}Edit</button></span></div>`; }).join('')}</div>` : '<p class="note">No subjects yet. Each one gets its own tab, colour and decks.</p>'}
       <div><button class="btn sm" data-act="sub-add">${ic('plus')}Add a subject</button></div>
     </section>
     <section class="pref"><h3>Base colour</h3>
@@ -451,6 +454,7 @@ function render(anim) {
   const views = { home: viewHome, study: viewStudy, learn: viewLearn, library: viewLibrary, prefs: viewPrefs };
   v.innerHTML = (views[r] || viewHome)();
   drawBolts(v);
+  drawFaces(v);
   paintSubs(); paintRail(); paintSync();
   if (r === 'library' && UI.lib.mode === 'build') paintBuild();
   if (r === 'library' && UI.lib.mode === 'new') paintNewDeck();

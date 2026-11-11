@@ -1,7 +1,7 @@
 /* ---------- state + storage ----------
    Cloud: everything lives in the viewer's private subtree (data/users/<id>/...), so it follows the Claude account.
      profile            settings, daily tallies, recent sessions
-     s_<subject>        a subject: name, colour, order
+     s_<subject>        a subject: name, colour, order      s_<subject>/syl/*   its syllabus text
      d_<deck>           deck record            p_<deck>   per-question memory state
      d_<deck>/cards/*   question bank chunks   d_<deck>/src/*   source text parts   d_<deck>/les/*   lesson chats
    Local: the same shape in localStorage, used when no account storage is available. */
@@ -10,7 +10,7 @@ const STUDY0 = { mode: 'endless', len: 10, mc: true, sa: true, focus: 'adaptive'
 const profile0 = () => ({ v: 1, days: {}, goal: 30, prefs: { ...PREF0 }, pt: 0, active: null, sub: null, act: {}, study: { ...STUDY0 }, at: 0, sessions: [] });
 const CHUNK = 100, PART = 60000, SRC_MAX = 600000;
 
-const S = { ready: false, mode: 'boot', uid: null, stale: false, dead: false, err: null, pending: 0, profile: profile0(), subs: {}, decks: {}, prog: {}, progRt: {}, cards: {}, src: {}, les: {} };
+const S = { ready: false, mode: 'boot', uid: null, stale: false, dead: false, err: null, pending: 0, profile: profile0(), subs: {}, subSyl: {}, decks: {}, prog: {}, progRt: {}, cards: {}, src: {}, les: {} };
 let B = null;
 let onStore = () => {};
 
@@ -31,7 +31,8 @@ function cloudBackend(db, uid) {
     try { return await fn(); }
     catch (e) { if (e && e.code === 'unavailable') { await sleep(700 + Math.random() * 900); return fn(); } throw e; }
   };
-  const sub = (did, col) => db.doc(base + '/d_' + did).collection(col);
+  // sub-collections hang off a deck record by default, or off a subject record when the id says so
+  const sub = (did, col) => db.doc(base + '/' + (did.startsWith('s_') ? did : 'd_' + did)).collection(col);
   return {
     // with `full`: merge into the stored document, creating it from full() when it does not exist yet
     put(key, data, full) {
@@ -112,8 +113,11 @@ function applyChange(ch) {
   if (id === 'profile') { if (ch.data) mergeProfile(S.profile, ch.data); return; }
   if (id.startsWith('s_')) {
     const sid = id.slice(2);
-    if (!ch.data) delete S.subs[sid];
-    else if (!S.subs[sid] || (ch.data.ut || 0) >= (S.subs[sid].ut || 0)) S.subs[sid] = Object.assign({ id: sid }, ch.data);
+    if (!ch.data) { delete S.subs[sid]; delete S.subSyl[sid]; }
+    else if (!S.subs[sid] || (ch.data.ut || 0) >= (S.subs[sid].ut || 0)) {
+      if (S.subs[sid] && (S.subs[sid].sv || 0) !== (ch.data.sv || 0)) delete S.subSyl[sid];
+      S.subs[sid] = Object.assign({ id: sid }, ch.data);
+    }
     return;
   }
   if (id.startsWith('d_')) {
@@ -216,7 +220,33 @@ const Store = {
     const moved = Object.keys(S.decks).filter(did => S.decks[did].sub === id);
     for (const did of moved) { delete S.decks[did].sub; await Store.saveDeck(did); }
     if (S.profile.sub === id) { S.profile.sub = null; Store.touchActive(); }
+    delete S.subSyl[id];
+    try {
+      const docs = await B.subGet('s_' + id, 'syl');
+      await Promise.all(docs.map(d => B.subDel('s_' + id, 'syl', d.id)));
+    } catch (e) {}
     return track(B.del('s_' + id)).catch(saveFailed);
+  },
+  loadSubSyl(id) {
+    if (S.subSyl[id] != null) return Promise.resolve(S.subSyl[id]);
+    const s = S.subs[id];
+    if (!s || !s.syl) return Promise.resolve(S.subSyl[id] = '');
+    return B.subGet('s_' + id, 'syl').then(docs => {
+      docs.sort((a, b) => (a.data.i | 0) - (b.data.i | 0));
+      return (S.subSyl[id] = docs.map(d => d.data.text || '').join(''));
+    });
+  },
+  async setSubSyl(id, text) {
+    const s = S.subs[id];
+    if (!s) return;
+    text = String(text || '').slice(0, 300000);
+    const n = Math.ceil(text.length / PART), old = s.sylParts | 0, jobs = [];
+    for (let i = 0; i < n; i++) jobs.push(B.subPut('s_' + id, 'syl', String(i), { i, text: text.slice(i * PART, (i + 1) * PART) }));
+    for (let i = n; i < old; i++) jobs.push(B.subDel('s_' + id, 'syl', String(i)));
+    await track(Promise.all(jobs));
+    s.syl = text.length; s.sylParts = n; s.sv = now();
+    S.subSyl[id] = text;
+    return Store.saveSub(id);
   },
   resetProg(did) {
     S.prog[did] = {}; S.progRt[did] = now(); delete dirty.prog[did];

@@ -364,6 +364,33 @@ svg{display:block}
 .mc-form textarea:focus{outline:0;border-color:var(--fg2)}
 .mc-form .btn{min-height:46px;width:46px;padding:0}
 
+/* BOLT: a pixel portrait, and a chat that reads like a text thread */
+.face{flex:none;display:block;width:var(--fs);height:var(--fs);--u:calc(var(--fs) / 16);image-rendering:crisp-edges;image-rendering:pixelated}
+.face.xs{--fs:20px}.face.sm{--fs:34px}.face.md{--fs:48px}.face.lg{--fs:80px}.face.big{--fs:64px}
+.face[data-live]{animation:facebob 1.9s steps(1) infinite}
+.face.pop{animation:facepop .3s steps(4) 1,facebob 1.9s steps(1) .3s infinite}
+.btn .face{margin-block:-3px}
+.mc-h .face.big{background:var(--sunk);border:1px solid var(--line2);border-radius:var(--r);box-shadow:0 0 26px -8px var(--a1)}
+.mc-h b{letter-spacing:.1em}
+.mc-h .lbl{text-transform:none;letter-spacing:.04em}
+.mc-log{gap:10px}
+.txt{display:flex;align-items:flex-end;gap:8px;min-width:0;max-width:100%}
+.txt.me{justify-content:flex-end;margin-block:6px}
+.bub{min-width:0;max-width:84%;padding:8px 12px;background:var(--raise);border:1px solid var(--line2);border-radius:14px;font-size:15px;line-height:1.45;overflow-wrap:anywhere}
+.txt.ai .bub{border-bottom-left-radius:4px}
+.txt.me .bub{background:var(--grad);border-color:transparent;color:var(--on);border-bottom-right-radius:4px;white-space:pre-wrap}
+.txt.new{animation:bub .24s cubic-bezier(.2,.8,.2,1) backwards}
+.txt.typing .bub{padding:11px 12px;color:var(--mute)}
+.face-gap{flex:none;width:34px}
+.bub.prose p,.bub.prose ul,.bub.prose ol{margin-bottom:.45em}
+.mc-empty{align-items:flex-start}
+.mc-empty p{max-width:30ch}
+.sj-row .note{max-width:52ch}
+.checking .face{margin-right:-2px}
+@keyframes facebob{0%,100%{transform:translateY(0)}50%{transform:translateY(calc(var(--u) * -1))}}
+@keyframes facepop{0%{transform:scale(1)}35%{transform:scale(1.2) rotate(-5deg)}70%{transform:scale(.96) rotate(2deg)}100%{transform:scale(1)}}
+@keyframes bub{from{opacity:0;transform:translateY(8px) scale(.96)}}
+
 /* ---------- overlays ---------- */
 .sheet-wrap{position:fixed;inset:0;z-index:50;display:flex;align-items:flex-end;justify-content:center;background:var(--scrim);padding-top:env(safe-area-inset-top,0px)}
 .sheet{width:min(580px,100%);max-height:94%;overflow-y:auto;display:flex;flex-direction:column;gap:14px;background:var(--panel);border:1px solid var(--line2);border-bottom:0;border-radius:10px 10px 0 0;padding-block:20px calc(20px + env(safe-area-inset-bottom,0px));padding-left:max(16px,env(safe-area-inset-left,0px));padding-right:max(16px,env(safe-area-inset-right,0px));animation:up .18s ease-out}

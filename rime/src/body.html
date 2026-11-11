@@ -15,7 +15,7 @@
       <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M13.6 1.5 3.8 13.6h6.3L8.4 22.5 20.2 9.4h-6.6z" fill="url(#ringgrad)"></path></svg>
     </a>
     <div class="nav" id="nav-rail"></div>
-    <button class="btn" data-act="open-claude" id="rail-claude">Ask BOLT</button>
+    <button class="btn" data-act="open-claude" id="rail-claude"><canvas class="face xs" data-mood data-live data-face="smirk" width="16" height="16" aria-hidden="true"></canvas>Text BOLT</button>
     <div class="rail-foot">
       <div class="rank" id="rank"></div>
       <div class="sync" id="sync-rail"><i></i><span>Opening</span></div>
@@ -27,7 +27,7 @@
       <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M13.6 1.5 3.8 13.6h6.3L8.4 22.5 20.2 9.4h-6.6z" fill="url(#ringgrad)"></path></svg>
     </a>
     <div class="subs grow" id="subs-top" role="group" aria-label="Subjects"></div>
-    <button class="btn sm" data-act="open-claude" aria-label="Ask BOLT" id="top-claude"></button>
+    <button class="btn sm" data-act="open-claude" aria-label="Text BOLT" id="top-claude"></button>
   </header>
 
   <div class="subbar"><div class="subs" id="subs-bar" role="group" aria-label="Subjects"></div></div>
@@ -48,6 +48,7 @@
 
 <aside class="mc" id="mc" aria-label="BOLT" aria-hidden="true">
   <div class="mc-h">
+    <canvas class="face big" id="bolt-face" data-mood data-live data-look data-face="smirk" width="16" height="16" aria-hidden="true"></canvas>
     <div class="grow">
       <b>BOLT</b>
       <p class="lbl" id="mc-ctx">Your teacher</p>
@@ -58,7 +59,7 @@
   <div class="mc-log" id="mc-log" aria-live="polite"></div>
   <div class="mc-quick" id="mc-quick"></div>
   <form class="mc-form" id="mc-form">
-    <textarea id="mc-in" rows="1" placeholder="Ask anything about this" aria-label="Message BOLT" enterkeyhint="send"></textarea>
+    <textarea id="mc-in" rows="1" placeholder="text BOLT" aria-label="Message BOLT" enterkeyhint="send"></textarea>
     <button class="btn pri" type="submit" id="mc-send" aria-label="Send"></button>
   </form>
 </aside>
