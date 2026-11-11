@@ -305,6 +305,17 @@ async function chatRules(th, query) {
       }
     }
   }
+  if (th.kind === 'flash' && th.cur) {
+    const cur = th.cur(), card = cur && cur.card;
+    if (card) {
+      q += ' ' + card.q + ' ' + card.a;
+      L.push('', 'CURRENT FLASHCARD (the student is learning this deck by flipping cards before being quizzed on it; they may have moved on from cards discussed earlier in this chat)');
+      L.push('Front: ' + card.q);
+      L.push('Back: ' + card.a + (card.why ? '. Card explanation: ' + card.why : ''));
+      L.push(cur.flipped ? 'They have flipped it and can see the back.' : 'They have not flipped it yet. They are learning, not being tested, so you can explain it; if they ask for a hint, hint first.');
+      L.push('Teach it: what it means, why it is so, a way to remember it, and how the HSC tends to ask about it. Keep to your usual short texts.');
+    }
+  }
   if (th.kind === 'exam' && th.cur) {
     const cur = th.cur(), x = cur && cur.q;
     if (x) {

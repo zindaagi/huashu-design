@@ -61,6 +61,7 @@ function selectSub(id) {
   S.profile.sub = want;
   Store.touchActive();
   UI.setup = null; UI.learn = null;
+  if (UI.flash && UI.flash.end) UI.flash = null;
   // a deck page left open from another subject does not follow you into this one
   const open = UI.lib.mode === 'deck' && S.decks[UI.lib.did];
   if (UI.route === 'library' || (open && want && subOf(open) !== want)) UI.lib = { mode: 'list', did: null, q: '' };
@@ -131,6 +132,7 @@ function onRoute() {
   const r = (location.hash || '#home').slice(1);
   UI.route = NAV.some(n => n[0] === r) ? r : 'home';
   // a finished build is only worth showing while you are still on it
+  if (UI.route !== 'study' && UI.flash && UI.flash.end) UI.flash = null;
   if (UI.route === 'library' && UI.lib.mode === 'build' && !(UI.build && UI.build.status === 'run' && !UI.build.quiet)) UI.lib.mode = S.decks[UI.lib.did] ? 'deck' : 'list';
   render(true);
   $('#main').scrollTop = 0;
@@ -153,7 +155,7 @@ async function startSession(o) {
   else if (o.topics && o.topics.length) pool = cards.filter(c => o.topics.includes(c.topic || 'General'));
   if (!pool.length) { toast('No questions match that selection.'); return; }
   if (!cfg.mc && !cfg.sa) cfg.mc = true;
-  UI.done = null;
+  UI.done = null; UI.flash = null;
   UI.sess = {
     did: o.did, mode: cfg.mode, want: cfg.len, len: Math.min(cfg.len, pool.length), mc: cfg.mc, sa: cfg.sa, focus: cfg.focus,
     topup: !!cfg.topup && !o.only, topics: o.topics || [], only: o.only || null, pool: pool.slice(),
@@ -729,6 +731,7 @@ async function lessonQuiz() {
 const Chat = { open: false, thread: null, busy: false, ctl: null, err: '', quiz: null, free: {} };
 function quickPrompts(th) {
   if (th.kind === 'quiz') { const c = th.cur && th.cur(); return c && c.state === 'done' ? ['Critique my answer', 'How would the HSC ask this?', 'Give me a similar one'] : ['Give me a hint', 'Explain the idea behind this', 'Reveal the answer and explain']; }
+  if (th.kind === 'flash') return ['Explain this one', 'Give me a way to remember it', 'How would the HSC ask this?'];
   if (th.kind === 'lesson') return ['Give me an example', 'Explain that more simply', 'How is this examined?'];
   if (th.kind === 'review') return ['What pattern do you see in my mistakes?', 'Re-teach the hardest one'];
   if (th.all) return ['What should I study today?', 'Where am I weakest overall?', 'Test me on a weak spot'];
@@ -765,6 +768,7 @@ function closeChat() {
   focusAnswer();
 }
 function defaultThread() {
+  if (UI.flash && !UI.flash.end && UI.route === 'study') return flashThread();
   if (UI.sess && UI.route === 'study') return Chat.quiz || (Chat.quiz = { kind: 'quiz', did: UI.sess.did, turns: [], cur: () => UI.sess && UI.sess.cur });
   const sub = curSub();
   // the All tab: one chat that sees every subject
@@ -778,7 +782,7 @@ function paintChat() {
   const th = Chat.thread;
   if (!th) return;
   const sj = th.did && S.decks[th.did] ? S.subs[subOf(S.decks[th.did])] : S.subs[th.sub];
-  $('#mc-ctx').textContent = th.kind === 'quiz' ? 'on your current question' : th.kind === 'lesson' ? th.title : th.kind === 'review' ? 'going over your misses' : th.all ? 'all your subjects' : th.did && S.decks[th.did] ? S.decks[th.did].name : sj ? sj.name : 'online, allegedly studying';
+  $('#mc-ctx').textContent = th.kind === 'quiz' ? 'on your current question' : th.kind === 'flash' ? 'on this flashcard' : th.kind === 'lesson' ? th.title : th.kind === 'review' ? 'going over your misses' : th.all ? 'all your subjects' : th.did && S.decks[th.did] ? S.decks[th.did].name : sj ? sj.name : 'online, allegedly studying';
   const tools = $('#mc-tools'), l = lessonOf(th);
   tools.hidden = th.kind !== 'lesson';
   tools.innerHTML = th.kind === 'lesson' ? `<button class="btn sm" data-act="lesson-quiz" ${Chat.busy ? 'disabled' : ''}>${ic('bolt')}Quiz me on this</button><button class="btn sm" data-act="lesson-done">${ic('check')}${l && l.st === 2 ? 'Done' : 'Mark as done'}</button>` : '';
@@ -786,7 +790,7 @@ function paintChat() {
     ? (t.auto ? '' : '<div class="txt me"><div class="bub">' + esc(t.content) + '</div></div>')
     : splitTexts(t.content).filter(x => x.text).map(x => botText(x)).join('')).join('');
   const hello = !aiOK() ? 'BOLT is not available in this view. Open the page inside Claude and allow it to use Claude.'
-    : th.kind === 'quiz' ? 'stuck? just ask, ill hint before i spoil it' : th.all ? 'ask me whatever, any subject. your notes, the syllabus, what to study next' : 'ask me whatever. your notes, the syllabus, why you got that one wrong';
+    : th.kind === 'quiz' ? 'stuck? just ask, ill hint before i spoil it' : th.kind === 'flash' ? 'ask me about this card. ill explain it properly' : th.all ? 'ask me whatever, any subject. your notes, the syllabus, what to study next' : 'ask me whatever. your notes, the syllabus, why you got that one wrong';
   const kept = th.kind === 'free' && msgs && !Chat.busy ? '<div class="mc-mem"><span class="lbl">Kept with your account</span><button class="link" data-act="chat-clear">' + (th.clr ? 'Tap again to clear' : 'Clear chat') + '</button></div>' : '';
   const empty = '<div class="mc-empty">' + faceHTML('lg', { look: true }) + '<p>' + hello + '</p></div>';
   const log = $('#mc-log');
@@ -1010,7 +1014,7 @@ document.addEventListener('click', e => {
   }
   const el = e.target.closest('[data-act]');
   if (!el || el.disabled) return;
-  const fn = ACT[el.dataset.act] || PAP_ACT[el.dataset.act];
+  const fn = ACT[el.dataset.act] || PAP_ACT[el.dataset.act] || FLASH_ACT[el.dataset.act];
   if (fn) fn(el, e);
 });
 document.addEventListener('submit', e => {

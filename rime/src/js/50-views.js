@@ -199,6 +199,7 @@ function viewHome() {
         <button class="btn go lg" data-act="quick-start" ${st.total ? '' : 'disabled'}>${ic('bolt')}${cta}</button>
         <button class="btn lg" data-act="go" data-to="study">Set up a session</button>
         <button class="btn lg" data-act="go" data-to="learn">Learn it</button>
+        <button class="btn lg" data-act="flash" ${st.total ? '' : 'disabled'}>Flashcards</button>
       </div>
     </div>
   </section>
@@ -215,7 +216,7 @@ function viewHome() {
 }
 
 /* ----- study ----- */
-function viewStudy() { return UI.sess ? viewRun() : UI.done ? viewDone() : viewSetup(); }
+function viewStudy() { return UI.flash ? viewFlash() : UI.sess ? viewRun() : UI.done ? viewDone() : viewSetup(); }
 function setupPool(su) {
   const cards = S.cards[su.did];
   if (!cards) return null;
@@ -248,7 +249,7 @@ function viewSetup() {
       ${pool ? `<div class="setup-sum"><span><b>${pool.length}</b> in play</span><span><b>${due}</b> due</span><span><b>${fresh}</b> new</span></div>`
     : cardErr[did] === 'failed' ? `<div class="banner">${ic('warn')}<span>This deck's questions could not be loaded. Check your connection. <button class="link" data-act="retry-cards" data-did="${did}">Retry</button></span></div>`
       : '<p class="lbl">Loading questions</p>'}
-      <div><button class="btn pri lg" data-act="start" ${pool && pool.length ? '' : 'disabled'}>${ic('bolt')}Start</button></div>
+      <div class="chips"><button class="btn pri lg" data-act="start" ${pool && pool.length ? '' : 'disabled'}>${ic('bolt')}Start</button><button class="btn lg" data-act="st-flash" ${pool && pool.length ? '' : 'disabled'}>Flashcards first</button></div>
     </div>
   </div>`;
 }
@@ -323,7 +324,7 @@ function viewDone() {
       <p class="note">Deck charged from ${pct(r.before)}% to <b>${pct(r.after)}%</b>.</p>
       <div class="chips">
         <button class="btn pri lg" data-act="again">${ic('bolt')}Go again</button>
-        ${r.misses.length ? '<button class="btn lg" data-act="drill-misses">Drill the misses</button>' : ''}
+        ${r.misses.length ? '<button class="btn lg" data-act="drill-misses">Drill the misses</button><button class="btn lg" data-act="flash-misses">Flip the misses</button>' : ''}
         ${r.misses.length && aiOK() ? `<button class="btn lg" data-act="ask-misses">${faceHTML('xs')}Go over them with BOLT</button>` : ''}
         <button class="btn lg ghost" data-act="done-home">Home</button>
       </div>
@@ -388,7 +389,7 @@ function viewDeck(did) {
   ensureCards(did);
   return `<div><button class="link" data-act="lib-back">← All decks</button></div>
   <div class="page-h"><div class="grow"><p class="lbl">Deck${S.subs[d.sub] ? ' · ' + esc(S.subs[d.sub].name) : ''}${d.sample ? ' · sample' : ''}</p><h1>${esc(d.name)}</h1></div>
-    <div class="chips"><button class="btn pri" data-act="deck-study" ${st.total ? '' : 'disabled'}>${ic('bolt')}Study</button><button class="btn" data-act="deck-rename">Rename</button></div></div>
+    <div class="chips"><button class="btn pri" data-act="deck-study" ${st.total ? '' : 'disabled'}>${ic('bolt')}Study</button><button class="btn" data-act="deck-flash" ${st.total ? '' : 'disabled'}>Flashcards</button><button class="btn" data-act="deck-rename">Rename</button></div></div>
   <dl class="stats card"><div><dt>Questions</dt><dd>${st.total}</dd></div><div><dt>Mastered</dt><dd>${st.mast}</dd></div><div><dt>Due</dt><dd>${st.due}</dd></div><div><dt>Recall</dt><dd>${st.acc == null ? '—' : pct(st.acc) + '<small>%</small>'}</dd></div></dl>
   ${subIds().length ? `<section class="card sec"><div class="sec-h"><h2>Subject</h2></div><div class="chips">${subChips(d.sub, 'deck-move')}</div></section>` : ''}
   <section class="card sec"><div class="sec-h"><h2>Material</h2><button class="btn sm" data-act="src-add">${ic('plus')}Add material</button></div>
@@ -497,7 +498,7 @@ function render(anim) {
   const r = UI.route, v = $('#view');
   $$('[data-nav]').forEach(a => { if (a.dataset.nav === r) a.setAttribute('aria-current', 'page'); else a.removeAttribute('aria-current'); });
   const exam = r === 'papers' && !!Pap.run;
-  $('#app').classList.toggle('focus', (r === 'study' && !!UI.sess) || exam);
+  $('#app').classList.toggle('focus', (r === 'study' && (!!UI.sess || (!!UI.flash && !UI.flash.end))) || exam);
   // exam mode: the whole interface settles into the subject's colour
   const root = document.documentElement;
   if (root.classList.contains('ambient') !== exam) {
@@ -517,7 +518,7 @@ function render(anim) {
 function softRender() {
   const ae = document.activeElement;
   if (ae && /^(INPUT|TEXTAREA)$/.test(ae.tagName)) return;
-  if (UI.sess || UI.sheet || (UI.route === 'study' && UI.done)) return;
+  if (UI.sess || UI.flash || UI.sheet || (UI.route === 'study' && UI.done)) return;
   if (UI.route === 'papers' && (Pap.run || Pap.done || Pap.job)) return;
   if (UI.route === 'library' && (UI.lib.mode === 'new' || UI.lib.mode === 'build')) return;
   render();

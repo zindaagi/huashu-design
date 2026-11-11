@@ -396,6 +396,25 @@ svg{display:block}
 @keyframes facepop{0%{transform:scale(1)}35%{transform:scale(1.2) rotate(-5deg)}70%{transform:scale(.96) rotate(2deg)}100%{transform:scale(1)}}
 @keyframes bub{from{opacity:0;transform:translateY(8px) scale(.96)}}
 
+/* ---------- flashcards ---------- */
+.fc{perspective:1600px;cursor:pointer;border-radius:var(--r);-webkit-tap-highlight-color:transparent}
+.fc:focus-visible{outline:2px solid var(--ink);outline-offset:4px}
+.fc-in{position:relative;display:grid;transform-style:preserve-3d;transition:transform .55s cubic-bezier(.2,.85,.25,1)}
+.fc-in.flipped{transform:rotateY(180deg)}
+.fc-face{grid-area:1 / 1;display:flex;flex-direction:column;gap:14px;min-width:0;min-height:min(48vh,340px);padding:22px;background:var(--panel);border:1px solid var(--line);border-radius:var(--r);backface-visibility:hidden;-webkit-backface-visibility:hidden}
+.fc-back{transform:rotateY(180deg);border-top:2px solid var(--a1)}
+.fc-front .q-text{margin:auto 0;text-align:center}
+.fc-hint{text-align:center}
+.fc-a{margin-top:auto;font-weight:600}
+.fc-why{color:var(--fg2);font-size:15px;line-height:1.5;text-wrap:pretty}
+.fc-q{margin-top:auto;padding-top:12px;border-top:1px solid var(--line);text-transform:none;letter-spacing:.01em;font:400 12.5px/1.4 var(--fb);color:var(--mute)}
+.fc-acts{display:flex;flex-wrap:wrap;justify-content:center;align-items:center;gap:10px;min-height:48px}
+.fcrun .btn[aria-pressed="true"]{background:var(--fg);border-color:var(--fg);color:var(--bg)}
+.fc.in{animation:fcin .24s ease-out}
+.fc.in-back{animation:fcinb .24s ease-out}
+@keyframes fcin{from{opacity:0;transform:translateX(28px)}to{opacity:1;transform:none}}
+@keyframes fcinb{from{opacity:0;transform:translateX(-28px)}to{opacity:1;transform:none}}
+
 /* ---------- exam countdowns ---------- */
 .cd{position:relative;display:grid;grid-template-columns:auto minmax(0,1fr);align-items:center;gap:12px 18px;min-width:0;padding:14px 50px 14px 16px;background:var(--panel);border:1px solid var(--line);border-left:3px solid var(--a1);border-radius:var(--r)}
 .cd-n{display:flex;align-items:baseline;gap:8px}
