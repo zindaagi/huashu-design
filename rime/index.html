@@ -228,6 +228,8 @@ svg{display:block}
 .run-top{display:flex;align-items:center;gap:10px}
 .run-mid{flex:1;min-width:0;display:flex;align-items:center;gap:10px;font-size:12px;color:var(--fg2)}
 .run-mid .meter{flex:1}
+/* narrow phones: the word gives way so the score never slides under the streak */
+@media (max-width:400px){.run-top{gap:8px}.run-mid{gap:8px}.run-mid>.lbl{display:none}}
 .q{position:relative;display:flex;flex-direction:column;gap:16px;padding:20px;background:var(--panel);border:1px solid var(--line);border-radius:var(--r);animation:qin .18s ease-out}
 .q-meta{display:flex;flex-wrap:wrap;gap:6px 10px;align-items:center}
 .tag{font:500 10px/1 var(--fm);letter-spacing:.12em;text-transform:uppercase;padding:4px 6px;border:1px solid var(--line2);border-radius:3px;color:var(--fg2)}
@@ -394,6 +396,17 @@ svg{display:block}
 @keyframes facebob{0%,100%{transform:translateY(0)}50%{transform:translateY(calc(var(--u) * -1))}}
 @keyframes facepop{0%{transform:scale(1)}35%{transform:scale(1.2) rotate(-5deg)}70%{transform:scale(.96) rotate(2deg)}100%{transform:scale(1)}}
 @keyframes bub{from{opacity:0;transform:translateY(8px) scale(.96)}}
+
+/* the switch under a quiz question: what the next one will be */
+.nextfmt{display:flex;flex-wrap:wrap;align-items:center;justify-content:center;gap:8px 12px}
+.seg{display:inline-flex;max-width:100%;border:1px solid var(--line2);border-radius:var(--r);overflow:hidden;background:var(--sunk)}
+.seg-b{min-height:38px;padding:0 13px;color:var(--fg2);font:500 11px/1.15 var(--fm);letter-spacing:.07em;text-transform:uppercase;white-space:nowrap;transition:background .12s,color .12s}
+.seg-b+.seg-b{border-left:1px solid var(--line2)}
+.seg-b:hover{color:var(--fg)}
+.seg-b[aria-pressed="true"]{background:var(--fg);color:var(--bg)}
+@media (max-width:380px){.seg-b{padding:0 9px;letter-spacing:.04em}}
+.mc-mem{display:flex;align-items:center;justify-content:center;gap:10px;padding-bottom:4px}
+.mc-mem .link{font-size:12px}
 
 /* ---------- papers and exam mode ---------- */
 .sec-h:has(>.sel){flex-wrap:wrap;align-items:center}
@@ -864,8 +877,8 @@ function cloudBackend(db, uid) {
     try { return await fn(); }
     catch (e) { if (e && e.code === 'unavailable') { await sleep(700 + Math.random() * 900); return fn(); } throw e; }
   };
-  // sub-collections hang off a deck record by default, or off a subject record when the id says so
-  const sub = (did, col) => db.doc(base + '/' + (did.startsWith('s_') ? did : 'd_' + did)).collection(col);
+  // sub-collections hang off a deck record by default, or off a subject record or the profile when the id says so
+  const sub = (did, col) => db.doc(base + '/' + (did === 'profile' || did.startsWith('s_') ? did : 'd_' + did)).collection(col);
   return {
     // with `full`: merge into the stored document, creating it from full() when it does not exist yet
     put(key, data, full) {
@@ -1057,7 +1070,7 @@ const Store = {
     if (S.profile.sub === id) { S.profile.sub = null; Store.touchActive(); }
     delete S.subSyl[id];
     try {
-      for (const col of ['syl', 'pq', 'bp', 'pg']) {
+      for (const col of ['syl', 'pq', 'bp', 'pg', 'chat']) {
         const docs = await B.subGet('s_' + id, col);
         await Promise.all(docs.map(d => B.subDel('s_' + id, col, d.id)));
       }
@@ -1195,10 +1208,28 @@ const Store = {
     const keep = turns.slice(-40).map(t => ({ role: t.role, content: String(t.content).slice(0, 6000), auto: !!t.auto }));
     return track(B.subPut(did, 'les', lid, { turns: keep, t: now() })).catch(saveFailed);
   },
+  /* BOLT's open chats are kept: one for all subjects, one per subject, one per deck */
+  chatAt(key) {
+    if (key === 'all') return ['profile', 'all'];
+    if (key.startsWith('sub:')) return S.subs[key.slice(4)] ? ['s_' + key.slice(4), 'free'] : null;
+    return S.decks[key] ? [key, 'free'] : null;
+  },
+  async loadChat(key) {
+    const at = Store.chatAt(key);
+    if (!at) return [];
+    const d = await B.subOne(at[0], 'chat', at[1]);
+    return d && Array.isArray(d.turns) ? d.turns.filter(t => t && (t.role === 'user' || t.role === 'assistant') && typeof t.content === 'string') : [];
+  },
+  saveChat(key, turns) {
+    const at = Store.chatAt(key);
+    if (!at) return Promise.resolve();
+    const keep = turns.slice(-40).map(t => ({ role: t.role, content: String(t.content).slice(0, 6000), auto: !!t.auto }));
+    return track(B.subPut(at[0], 'chat', at[1], { turns: keep, t: now() })).catch(() => {});
+  },
   async deleteDeck(did) {
     delete S.decks[did]; delete S.cards[did]; delete S.src[did]; delete S.prog[did]; delete dirty.prog[did];
     try {
-      for (const col of ['cards', 'src', 'les']) {
+      for (const col of ['cards', 'src', 'les', 'chat']) {
         const docs = await B.subGet(did, col);
         await Promise.all(docs.map(d => B.subDel(did, col, d.id)));
       }
@@ -1399,6 +1430,21 @@ function chooseFmt(s, card, p) {
   if (String(card.a).length > 48) pSA *= 0.3;
   return Math.random() < pSA ? 'sa' : 'mc';
 }
+/* a deck's question type. Decks made before this was a deck setting follow the old account-wide choice. */
+const FMTS = [['mix', 'Mix'], ['mc', 'Multiple choice'], ['sa', 'Short answer']];
+const FMT_NOTE = {
+  mix: 'New and shaky questions come as multiple choice, then switch to typed recall as they firm up.',
+  mc: 'Every question comes with four options to choose from.',
+  sa: 'You type every answer, and typos are forgiven.'
+};
+function deckFmt(did) {
+  const d = S.decks[did], f = d && d.fmt;
+  if (f === 'mix' || f === 'mc' || f === 'sa') return f;
+  const st = S.profile.study;
+  return st.mc && !st.sa ? 'mc' : st.sa && !st.mc ? 'sa' : 'mix';
+}
+const fmtCfg = f => ({ mc: f !== 'sa', sa: f !== 'mc' });
+const sessFmt = s => s.mc && s.sa ? 'mix' : s.mc ? 'mc' : 'sa';
 
 /* ----- marking typed answers ----- */
 const STOPW = new Set(['the', 'a', 'an', 'of', 'and', 'to', 'in', 'is', 'are', 'it', 'its', 'on', 'for', 'with', 'by', 'as', 'at']);
@@ -1575,6 +1621,47 @@ function pickExcerpts(text, query, budget) {
   for (const x of picked) { if (used + x.s.length > budget) continue; keep.push(x); used += x.s.length; if (used > budget * 0.92) break; }
   return keep.sort((a, b) => a.i - b.i).map(x => x.s).join('\n\n[...]\n\n');
 }
+/* the sections of several labelled texts that bear most on a query, kept under a budget.
+   Words are weighed by how rare they are across the texts, so "what" and "explain" do not drag everything in. */
+function pickAcross(sources, query, budget) {
+  const head = s => '### ' + s.label;
+  sources = sources.filter(s => s.text && s.text.trim());
+  if (!sources.length) return '';
+  if (sources.reduce((a, s) => a + s.text.length, 0) <= budget) return sources.map(s => head(s) + '\n' + s.text.trim()).join('\n\n');
+  const words = Array.from(new Set(norm(query).split(' ').filter(w => w.length >= 3 && !STOPW.has(w)))).sort((a, b) => b.length - a.length).slice(0, 28);
+  if (!words.length) return '';
+  const secs = [];
+  sources.forEach((src, si) => splitSections(src.text.slice(0, 160000), 1400).forEach((s, i) => secs.push({ si, i, s, low: s.toLowerCase(), sc: 0 })));
+  for (const w of words) {
+    const hits = [];
+    for (const x of secs) { let n = 0, at = x.low.indexOf(w); while (at >= 0 && n < 30) { n++; at = x.low.indexOf(w, at + w.length); } if (n) hits.push([x, n]); }
+    // a word that turns up in most sections says nothing about which ones matter
+    if (!hits.length || (secs.length >= 6 && hits.length > secs.length * 0.6)) continue;
+    const idf = Math.log(1 + secs.length / hits.length);
+    for (const [x, n] of hits) x.sc += idf * (1 + Math.log(n));
+  }
+  const cand = [];
+  let top = 0;
+  for (const x of secs) { if (!x.sc) continue; x.sc = x.sc / Math.sqrt(x.s.length + 200) * (sources[x.si].boost || 1); cand.push(x); if (x.sc > top) top = x.sc; }
+  if (!cand.length) return '';
+  // best first, but each pick from a text makes its next one count a little less, so one subject cannot crowd out another that matters nearly as much
+  const floor = top * 0.3, taken = {}, keep = [];
+  let used = 0;
+  while (used <= budget * 0.92) {
+    let best = null, bv = 0;
+    for (const x of cand) { if (x.done || x.sc < floor || used + x.s.length > budget) continue; const v = x.sc * Math.pow(0.85, taken[x.si] || 0); if (v > bv) { bv = v; best = x; } }
+    if (!best) break;
+    best.done = true; keep.push(best); used += best.s.length; taken[best.si] = (taken[best.si] || 0) + 1;
+  }
+  keep.sort((a, b) => (a.si - b.si) || (a.i - b.i));
+  const out = [];
+  let last = -1;
+  for (const x of keep) {
+    if (x.si !== last) { out.push((out.length ? '\n' : '') + head(sources[x.si])); last = x.si; } else out.push('[...]');
+    out.push(x.s);
+  }
+  return out.join('\n');
+}
 function cleanCard(r) {
   if (!r || typeof r !== 'object') return null;
   const q = str(r.q, 400), a = str(r.a, 240);
@@ -1654,9 +1741,11 @@ function genPrompt(o) {
   if (o.syllabus) L.push('- A SYLLABUS excerpt is included. Give priority to what it asks the student to know, and only test what this material covers.');
   L.push('- One fact or idea per question. Mix the kinds: definitions, causes and effects, comparisons, applications, numbers, sequences.');
   L.push('- The question must make sense on its own, without seeing the material.');
-  L.push('- "a" is the ideal short answer: a term, name, number or short phrase of at most 8 words wherever the material allows it.');
+  if (o.fmt === 'sa') L.push('- The student will TYPE every answer in this deck. "a" must be a term, name, number or phrase of at most 5 words with one natural wording, never a sentence. Word each question so that only that answer fits.');
+  else if (o.fmt === 'mc') L.push('- The student will answer every question in this deck by CHOOSING between four options. "a" may be a full phrase or one short sentence of at most 16 words when the idea needs it, so questions can test understanding and application as well as recall.');
+  else L.push('- "a" is the ideal short answer: a term, name, number or short phrase of at most 8 words wherever the material allows it.');
   L.push('- "alts" lists other wordings a fair marker would accept (abbreviations, synonyms, alternative spellings). Use [] when there are none.');
-  L.push('- "d" holds exactly 3 wrong options for a multiple-choice version. Make them plausible, the same kind and length as the answer, and clearly wrong to someone who knows the material. Never use "all of the above" or "none of the above".');
+  L.push('- "d" holds exactly 3 wrong options for a multiple-choice version. Make them plausible, the same kind and length as the answer, and clearly wrong to someone who knows the material. Never use "all of the above" or "none of the above".' + (o.fmt === 'mc' ? ' Build each wrong option from a real misconception or a near miss, so that choosing takes thought.' : ''));
   L.push('- "topic" is a label of 1 to 3 words. Reuse one label for related questions.' + (o.topicNames && o.topicNames.length ? ' Labels already in use: ' + o.topicNames.join('; ') + '.' : ''));
   L.push('- "why" is one sentence that explains the answer, shown after the student responds.');
   L.push('- Write in the language of the material.');
@@ -1774,11 +1863,12 @@ const BOLT_VOICE = [
   '',
   'Your face: begin every text with one tag in square brackets for the expression on your face as you say it, chosen from [smirk] [deadpan] [hype] [think] [sideeye] [oof] [shock] [soft]. Example: "[smirk] ok that one was free". Pick what fits that text: [oof] when they got it wrong, [hype] when they nailed something hard, [think] when you are working something out, [sideeye] when an answer is sus, [soft] when you are being kind, [deadpan] or [smirk] the rest of the time. The app turns the tag into your pixel face and hides it, so never mention the tags or describe your expression in words.'
 ];
-function boltRules(subject) {
+function boltRules(subject, names) {
   return BOLT_VOICE.concat([
     '',
     'What you judge against:',
-    '- The course is the NSW HSC (Year 12)' + (subject ? ', subject as the student named it: "' + subject + '". Work out which NESA course that is (for example "2U" maths is Mathematics Advanced and "3U" is Mathematics Extension 1).' : '.'),
+    names ? '- The student is doing the NSW HSC (Year 12)' + (names.length ? ' in these subjects, as they named them: ' + names.map(n => '"' + n + '"').join(', ') + '. Work out which NESA course each one is (for example "2U" maths is Mathematics Advanced and "3U" is Mathematics Extension 1).' : '.') + ' This chat is not tied to one subject: work out from each message which subject it belongs to and answer as the teacher of that course. If it could belong to more than one and the difference matters, ask which in one short text.'
+    : '- The course is the NSW HSC (Year 12)' + (subject ? ', subject as the student named it: "' + subject + '". Work out which NESA course that is (for example "2U" maths is Mathematics Advanced and "3U" is Mathematics Extension 1).' : '.'),
     '- Critique answers the way an HSC marker would: against the syllabus content and outcomes, the directive verb in the question (identify, outline, describe, explain, analyse, assess, evaluate and so on), and what the marking guidelines reward. Say what earns the marks, what is missing or vague, and how to say it tighter. Give a rough mark out of the likely marks when that helps.',
     '- Critique the question as well when it is useful: which part of the syllabus it sits under, whether the HSC would really ask it that way, and how it tends to show up in an exam.',
     '- Use the SYLLABUS text below wherever it covers the point. Where it is silent, or none is provided, use your own knowledge of the current NSW Year 12 course and its exam. If you are not sure something is in the current syllabus, say you are not sure instead of guessing.',
@@ -1786,7 +1876,75 @@ function boltRules(subject) {
     '- Be accurate above all. If the material is unclear or you are unsure, say so.'
   ]);
 }
+/* the All tab: BOLT is handed the whole account, and the parts of every syllabus and set of notes that bear on the message */
+const daysAgo = t => { const d = Math.round((now() - t) / DAY); return d <= 0 ? 'today' : d === 1 ? 'yesterday' : d + ' days ago'; };
+async function everything(query) {
+  const sids = subIds();
+  const dids = Object.keys(S.decks).sort((a, b) => (S.decks[b].ut || 0) - (S.decks[a].ut || 0)).slice(0, 36);
+  const quiet = p => Promise.resolve(p).then(v => v, () => null);
+  await Promise.all(sids.map(id => quiet(Store.loadSubSyl(id))).concat(dids.map(id => quiet(Store.loadCards(id))), dids.map(id => quiet(Store.loadSrc(id)))));
+  const nm = id => (S.subs[id] || {}).name || '';
+  const L = [];
+  L.push('Today: ' + plural(today().n, 'question') + ' answered, daily goal ' + (S.profile.goal || 30) + '. Day streak: ' + dayStreak() + '. Level ' + level().lv + '.');
+  L.push('', 'Subjects and decks:');
+  const groups = sids.map(id => [id, nm(id)]);
+  if (dids.some(d => subOf(S.decks[d]) === '_')) groups.push(['_', sids.length ? 'No subject' : 'Decks']);
+  if (!groups.length) L.push('(nothing yet: no subjects and no decks)');
+  for (const [sid, name] of groups) {
+    const sj = S.subs[sid], mine = dids.filter(d => subOf(S.decks[d]) === sid);
+    L.push('- ' + name + (sj ? (sj.syl ? ' (syllabus added)' : ' (no syllabus added yet)') : '') + (mine.length ? '' : ': no decks yet'));
+    for (const did of mine) {
+      const d = S.decks[did], st = deckStats(did), weak = weakTopics(did, 3).map(t => t.topic), strong = strongTopics(did, 2).map(t => t.topic);
+      L.push('    deck "' + d.name + '": ' + plural(st.total, 'question') + ', ' + st.seen + ' tried, mastery ' + pct(st.mastery) + '%, ' + st.due + ' due now' + (st.acc != null ? ', ' + pct(st.acc) + '% of answers right' : '') +
+        (weak.length ? '. weakest topics: ' + weak.join('; ') : '') + (strong.length ? '. strongest: ' + strong.join('; ') : ''));
+    }
+    for (const p of ((sj && sj.papers) || [])) L.push('    ' + (p.orig ? 'boss questions' : 'past paper "' + p.title + '"') + ': ' + plural(p.n | 0, 'question') + ', best so far ' + (p.best | 0) + ' of ' + (p.marks | 0) + ' marks');
+  }
+  const ses = (S.profile.sessions || []).slice(0, 8);
+  if (ses.length) {
+    L.push('', 'Recent sessions, newest first:');
+    for (const s of ses) L.push('- ' + daysAgo(s.t) + ': ' + s.name + (s.mode === 'paper' ? ', ' + s.c + ' of ' + (s.c + s.w) + ' marks' : ', ' + s.c + ' right and ' + s.w + ' wrong'));
+  }
+  const missed = [];
+  for (const did of dids) for (const c of (S.cards[did] || [])) { const p = (S.prog[did] || {})[c.id]; if (p && p[P.SEEN] > p[P.RIGHT]) missed.push({ did, c, n: p[P.SEEN] - p[P.RIGHT], of: p[P.SEEN], m: mastery(p) }); }
+  missed.sort((a, b) => (b.n - a.n) || (a.m - b.m));
+  if (missed.length) {
+    L.push('', 'Questions they get wrong, most often first:');
+    for (const x of missed.slice(0, 10)) { const d = S.decks[x.did], sj = nm(subOf(d)); L.push('- [' + (sj ? sj + ', ' : '') + d.name + '] ' + String(x.c.q).slice(0, 160) + ' | answer: ' + String(x.c.a).slice(0, 80) + ' | wrong ' + x.n + ' of ' + plural(x.of, 'try', 'tries')); }
+  }
+  // a subject named in the message pulls its own syllabus and notes forward
+  const qt = norm(query).split(' ').filter(w => w.length >= 2 && !STOPW.has(w));
+  const hot = new Set(sids.filter(id => norm(nm(id)).split(' ').some(nt => nt.length >= 2 && qt.some(w => w === nt || (nt.length >= 3 && w.startsWith(nt)) || (w.length >= 3 && nt.startsWith(w))))));
+  const boost = sid => hot.has(sid) ? 1.7 : 1;
+  const syl = [], mat = [];
+  for (const id of sids) if (S.subSyl[id]) syl.push({ label: nm(id) + ' syllabus', text: S.subSyl[id], boost: boost(id) });
+  for (const did of dids) {
+    const src = S.src[did], d = S.decks[did], sid = subOf(d);
+    if (!src) continue;
+    const lab = (nm(sid) ? nm(sid) + ', ' : '') + 'deck "' + d.name + '"';
+    if (src.syllabus) syl.push({ label: lab + ', syllabus notes', text: src.syllabus, boost: boost(sid) });
+    for (const p of src.parts) mat.push({ label: lab + ', ' + p.name, text: p.text, boost: boost(sid) });
+  }
+  let sylText = pickAcross(syl, query, 8000);
+  // named a subject without naming anything in it: the start of that syllabus is the best guide to what they mean
+  if (!sylText) { const named = syl.filter(x => x.boost > 1 && x.text.trim()); sylText = named.map(x => '### ' + x.label + ' (the start of it)\n' + x.text.trim().slice(0, Math.floor(6000 / named.length))).join('\n\n'); }
+  return { names: sids.map(nm), overview: L.join('\n'), syl: sylText, mat: pickAcross(mat, query, 12000), hasSyl: syl.length > 0 };
+}
+async function allRules(th, query) {
+  const us = th.turns.filter(t => t.role === 'user').slice(-2).map(t => t.content).join(' ');
+  const la = th.turns.filter(t => t.role === 'assistant').slice(-1)[0];
+  const ev = await everything((query || '') + ' ' + us + ' ' + (la ? String(la.content).slice(0, 600) : ''));
+  const L = boltRules('', ev.names);
+  L.push('', 'EVERYTHING IN THE STUDENT\u2019S APP');
+  L.push('You can see their whole account here: every subject and deck with scores, weakest topics, past papers, recent sessions and the questions they get wrong. After that come the parts of their syllabuses and notes that bear on this message. Use all of it. When they ask what to study, how they are going or where they are weak, answer from these numbers and name the deck or topic. Only excerpts of the notes are shown, so if they ask about something in their notes that is not below, say you cannot see that part right now.');
+  L.push('', ev.overview);
+  L.push('', 'SYLLABUS (excerpts most relevant to this turn, from any subject)', ev.syl || (ev.hasSyl ? '(nothing in their syllabuses matched this message: go on your own knowledge of the course)' : '(no syllabus added yet: go on your own knowledge of the courses, and if it would help, mention once that they can add a syllabus to each subject so you can mark against it exactly)'));
+  if (ev.mat) L.push('', 'MATERIAL (excerpts most relevant to this turn, from any deck)', ev.mat);
+  L.push('', 'The conversation follows.');
+  return L.join('\n');
+}
 async function chatRules(th, query) {
+  if (th.all) return allRules(th, query);
   const d = th.did ? S.decks[th.did] : null, c = await courseOf(th.did, th.sub);
   const L = boltRules(c.subject);
   let q = query || '';
@@ -2667,7 +2825,7 @@ function viewSetup() {
   if (!ids.length) return needDeck('Study', 'Sessions draw on a deck. Make one from your notes, or try the sample.');
   const su = UI.setup || (UI.setup = { did: activeDeck(), topics: [] });
   if (!ids.includes(su.did)) { su.did = activeDeck(); su.topics = []; }
-  const cfg = S.profile.study, did = su.did, d = S.decks[did];
+  const cfg = S.profile.study, did = su.did, d = S.decks[did], fmt = deckFmt(did);
   ensureCards(did);
   const topics = S.cards[did] ? topicList(did) : [];
   su.topics = su.topics.filter(t => topics.includes(t));
@@ -2680,8 +2838,8 @@ function viewSetup() {
   <div class="setup">
     ${ids.length > 1 ? `<div class="sec"><span class="lbl">Deck</span><div class="chips">${ids.map(id => chip(esc(S.decks[id].name), id === did, 'st-deck', 'data-did="' + id + '"')).join('')}</div></div>` : ''}
     <div class="sec"><span class="lbl">Length</span><div class="chips">${chip('Endless', cfg.mode === 'endless', 'st-mode', 'data-mode="endless"')}${[10, 20, 40].map(n => chip('Quiz \u00b7 ' + n, cfg.mode === 'quiz' && cfg.len === n, 'st-mode', 'data-mode="quiz" data-len="' + n + '"')).join('')}</div></div>
-    <div class="sec"><span class="lbl">Question formats</span><div class="chips">${chip('Multiple choice', cfg.mc, 'st-fmt', 'data-f="mc"')}${chip('Short answer', cfg.sa, 'st-fmt', 'data-f="sa"')}</div>
-      ${cfg.mc && cfg.sa ? '<p class="note">Mixed: new and shaky questions start as multiple choice, then switch to typed recall as they firm up.</p>' : ''}</div>
+    <div class="sec"><span class="lbl">Question types</span><div class="chips">${FMTS.map(f => chip(f[1], fmt === f[0], 'st-fmt', 'data-f="' + f[0] + '"')).join('')}</div>
+      <p class="note">${FMT_NOTE[fmt]} Kept with this deck, and you can switch mid-quiz.</p></div>
     <div class="sec"><span class="lbl">Focus</span><div class="chips">${chip('Adaptive', cfg.focus === 'adaptive', 'st-focus', 'data-f="adaptive"')}${chip('Weak spots', cfg.focus === 'weak', 'st-focus', 'data-f="weak"')}${chip('Strengths', cfg.focus === 'strong', 'st-focus', 'data-f="strong"')}</div><p class="note">${focusNote}</p></div>
     ${topics.length > 1 ? `<div class="sec"><span class="lbl">Topics</span><div class="chips">${chip('All', !su.topics.length, 'st-topic', 'data-t=""')}${topics.map(tp => chip(esc(tp), su.topics.includes(tp), 'st-topic', 'data-t="' + esc(tp) + '"')).join('')}</div></div>` : ''}
     ${cfg.mode === 'endless' && canTop ? `<div class="sec"><span class="lbl">Fresh questions</span><div class="chips">${chip('Keep writing new ones with Claude', cfg.topup, 'st-topup')}</div><p class="note">When unseen questions run low, Claude writes ten more from your material, aimed at your weak topics.</p></div>` : ''}
@@ -2723,6 +2881,11 @@ function runTopHTML(s) {
     <span class="pill streak-b" id="run-streak" title="Right answers in a row">${ic('spark')}<b>${s.streak}</b></span>
     <button class="btn sm" data-act="ask-claude" ${aiOK() ? '' : 'disabled'}>${faceHTML('xs')}<span>Ask</span></button>`;
 }
+/* the switch under a question: what the next one will be */
+function nextFmtHTML(s) {
+  const f = sessFmt(s);
+  return `<span class="lbl" id="nf-lbl">Next question</span><div class="seg" role="group" aria-labelledby="nf-lbl">${FMTS.map(x => `<button class="seg-b" data-act="run-fmt" data-f="${x[0]}" aria-pressed="${f === x[0]}">${x[1]}</button>`).join('')}</div>`;
+}
 function viewRun() {
   const s = UI.sess, c = s.cur;
   if (!c) return '';
@@ -2739,6 +2902,7 @@ function viewRun() {
       ${body}
       <div id="fb">${fbHTML(c)}</div>
     </article>
+    <div class="nextfmt" id="run-next">${nextFmtHTML(s)}</div>
     <p class="lbl" style="text-align:center">${esc(S.decks[s.did].name)}${UI.build && UI.build.status === 'run' && UI.build.did === s.did ? ' \u00b7 writing fresh questions' : ''}</p>
   </div>`;
 }
@@ -2856,6 +3020,7 @@ function viewNewDeck() {
       <div><button class="btn sm" data-act="nd-sylfile">${ic('file')}Upload a syllabus file</button><input type="file" id="nd-sylfile" hidden accept="${FILE_ACCEPT}"></div>
     </div>
     <div class="sec" id="nd-count"></div>
+    <div class="sec" id="nd-fmt"></div>
     <div class="chips"><button class="btn pri lg" data-act="nd-build" id="nd-go">Build deck</button><button class="btn lg ghost" data-act="lib-back">Cancel</button></div>
   </div>`;
 }
@@ -3600,7 +3765,9 @@ function selectSub(id) {
   S.profile.sub = want;
   Store.touchActive();
   UI.setup = null; UI.learn = null;
-  if (UI.route === 'library') UI.lib = { mode: 'list', did: null, q: '' };
+  // a deck page left open from another subject does not follow you into this one
+  const open = UI.lib.mode === 'deck' && S.decks[UI.lib.did];
+  if (UI.route === 'library' || (open && want && subOf(open) !== want)) UI.lib = { mode: 'list', did: null, q: '' };
   applyLook();
   zap();
   if (UI.route === 'prefs' || (UI.route === 'study' && UI.done && !UI.sess)) { UI.done = null; go('home'); }
@@ -3680,7 +3847,7 @@ function focusAnswer() {
 
 /* ----- sessions ----- */
 async function startSession(o) {
-  const cfg = Object.assign({}, S.profile.study, o);
+  const cfg = Object.assign({}, S.profile.study, fmtCfg(deckFmt(o.did)), o);
   let cards;
   try { cards = await Store.loadCards(o.did); } catch (e) { toast('This deck could not be loaded. Check your connection.'); return; }
   let pool = cards;
@@ -3881,6 +4048,14 @@ function maybeTopup(s) {
   generate(s.did, { n: 10, topics: weakTopics(s.did, 3).map(t => t.topic), quiet: true });
 }
 
+/* the question type belongs to the deck, so it is the same on every device and in every session */
+function setDeckFmt(did, f) {
+  const d = S.decks[did];
+  if (!d || !FMT_NOTE[f] || deckFmt(did) === f && d.fmt === f) return;
+  d.fmt = f;
+  Store.saveDeck(did);
+}
+
 /* ----- writing questions with Claude ----- */
 async function generate(did, o) {
   o = o || {};
@@ -3906,7 +4081,7 @@ async function generate(did, o) {
       const sec = secs[(start + Math.floor(k * secs.length / calls)) % secs.length];
       await aiGenerate({
         material: sec, syllabus: syllabusText(course, meta.name + ' ' + sec, 9000), subject: course.subject, n: want,
-        focus: o.focus || '', topics: o.topics || [], lessonTitle: o.lessonTitle || '',
+        focus: o.focus || '', topics: o.topics || [], lessonTitle: o.lessonTitle || '', fmt: deckFmt(did),
         existing: cards.slice(-50).map(c => c.q), topicNames: Array.from(new Set(cards.map(c => c.topic))).slice(0, 30), signal: b.ctl.signal,
         onCard: raw => {
           const c = cleanCard(raw);
@@ -3958,7 +4133,7 @@ function paintBuild() {
 const prettyName = f => { const s = String(f).replace(/\.[a-z0-9]{1,5}$/i, '').replace(/[_-]+/g, ' ').trim(); return (s.charAt(0).toUpperCase() + s.slice(1)).slice(0, 60); };
 const firstLine = t => { const l = String(t).split('\n').map(x => x.replace(/^[#>\-*\s|]+/, '').trim()).find(x => x.length > 2) || ''; return l.split(/[.:;|\t]/)[0].trim().slice(0, 40); };
 function openNewDeck() {
-  UI.nd = { sub: S.subs[curSub()] ? curSub() : '', name: '', text: '', syl: '', files: [], count: 30, mode: 'table', touched: false, header: false, headerSet: false, both: false, table: null, busy: 0 };
+  UI.nd = { sub: S.subs[curSub()] ? curSub() : '', name: '', text: '', syl: '', files: [], count: 30, fmt: 'mix', mode: 'table', touched: false, header: false, headerSet: false, both: false, table: null, busy: 0 };
   UI.lib = { mode: 'new', did: null, q: '' };
   go('library');
 }
@@ -3988,6 +4163,9 @@ function paintNewDeck() {
     box.innerHTML = aiOK() ? '' : `<div class="banner">${ic('warn')}<span>Claude is not available in this view, so it cannot write questions here. Paste a table instead, one row per line with a tab or comma between term and answer, and the rows become cards.</span></div>`;
   }
   $('#nd-count').innerHTML = eff === 'ai' && aiOK() ? `<span class="lbl">Questions to start with</span><div class="chips">${[15, 30, 60].map(n => chip(String(n), nd.count === n, 'nd-count', 'data-n="' + n + '"')).join('')}</div><p class="note">You can start studying as soon as the first few arrive, and add more at any time.</p>` : '';
+  const nf = $('#nd-fmt');
+  if (nf) nf.innerHTML = '<span class="lbl">Question types</span><div class="chips">' + FMTS.map(f => chip(f[1], nd.fmt === f[0], 'nd-fmt', 'data-f="' + f[0] + '"')).join('') + '</div><p class="note">' + FMT_NOTE[nd.fmt] +
+    (eff === 'ai' && aiOK() && nd.fmt !== 'mix' ? (nd.fmt === 'sa' ? ' BOLT keeps the answers short enough to type.' : ' BOLT writes fuller answers with close wrong options.') : '') + ' You can switch later, even mid-quiz.</p>';
   $('#nd-go').disabled = nd.busy > 0;
 }
 const ndDetectSoon = debounce(paintNewDeck, 350);
@@ -4031,7 +4209,7 @@ async function ndBuild() {
   if (eff === 'ai' && !aiOK()) { toast('Claude is not available here. Paste a table to make cards without it.', 4200); return; }
   $('#nd-go').disabled = true;
   const name = nd.name || (files[0] ? prettyName(files[0].name) : firstLine(nd.text)) || 'Untitled deck';
-  const did = newDeckRecord(name, S.subs[nd.sub] ? { sub: nd.sub } : null);
+  const did = newDeckRecord(name, Object.assign({ fmt: nd.fmt }, S.subs[nd.sub] ? { sub: nd.sub } : null));
   followDeck(did);
   UI.nd = null;
   try {
@@ -4255,7 +4433,17 @@ function quickPrompts(th) {
   if (th.kind === 'quiz') { const c = th.cur && th.cur(); return c && c.state === 'done' ? ['Critique my answer', 'How would the HSC ask this?', 'Give me a similar one'] : ['Give me a hint', 'Explain the idea behind this', 'Reveal the answer and explain']; }
   if (th.kind === 'lesson') return ['Give me an example', 'Explain that more simply', 'How is this examined?'];
   if (th.kind === 'review') return ['What pattern do you see in my mistakes?', 'Re-teach the hardest one'];
+  if (th.all) return ['What should I study today?', 'Where am I weakest overall?', 'Test me on a weak spot'];
   return ['What should I focus on?', 'Explain my weakest topic', 'What does the syllabus want here?'];
+}
+/* open chats are kept with the account, so BOLT picks up where the two of you left off */
+function freeThread(key, base) {
+  let th = Chat.free[key];
+  if (!th) {
+    th = Chat.free[key] = Object.assign({ kind: 'free', key, turns: [] }, base);
+    th.ready = Store.loadChat(key).then(turns => { th.turns = turns.concat(th.turns); }, () => {}).then(() => { th.ready = null; if (Chat.thread === th && !Chat.busy) paintChat(); });
+  }
+  return th;
 }
 function openChat(th) {
   if (Chat.ctl) Chat.ctl.abort();
@@ -4280,9 +4468,11 @@ function closeChat() {
 }
 function defaultThread() {
   if (UI.sess && UI.route === 'study') return Chat.quiz || (Chat.quiz = { kind: 'quiz', did: UI.sess.did, turns: [], cur: () => UI.sess && UI.sess.cur });
+  const sub = curSub();
+  // the All tab: one chat that sees every subject
+  if (!sub) return freeThread('all', { all: true, did: null, sub: null });
   const did = (UI.route === 'learn' && UI.learn) || (UI.route === 'library' && UI.lib.mode === 'deck' && UI.lib.did) || activeDeck() || '';
-  const sub = curSub(), key = did || ('sub:' + (sub || ''));
-  return Chat.free[key] || (Chat.free[key] = { kind: 'free', did: did || null, sub: S.subs[sub] ? sub : null, turns: [] });
+  return freeThread(did || ('sub:' + sub), { did: did || null, sub: S.subs[sub] ? sub : null });
 }
 /* one of BOLT's texts: his face as he says it, then the bubble */
 const botText = (x, cls) => '<div class="txt ai' + (cls || '') + '">' + faceHTML('sm', { mood: false, face: x.expr }) + '<div class="bub prose">' + md(x.text) + '</div></div>';
@@ -4290,7 +4480,7 @@ function paintChat() {
   const th = Chat.thread;
   if (!th) return;
   const sj = th.did && S.decks[th.did] ? S.subs[subOf(S.decks[th.did])] : S.subs[th.sub];
-  $('#mc-ctx').textContent = th.kind === 'quiz' ? 'on your current question' : th.kind === 'lesson' ? th.title : th.kind === 'review' ? 'going over your misses' : th.did && S.decks[th.did] ? S.decks[th.did].name : sj ? sj.name : 'online, allegedly studying';
+  $('#mc-ctx').textContent = th.kind === 'quiz' ? 'on your current question' : th.kind === 'lesson' ? th.title : th.kind === 'review' ? 'going over your misses' : th.all ? 'all your subjects' : th.did && S.decks[th.did] ? S.decks[th.did].name : sj ? sj.name : 'online, allegedly studying';
   const tools = $('#mc-tools'), l = lessonOf(th);
   tools.hidden = th.kind !== 'lesson';
   tools.innerHTML = th.kind === 'lesson' ? `<button class="btn sm" data-act="lesson-quiz" ${Chat.busy ? 'disabled' : ''}>${ic('bolt')}Quiz me on this</button><button class="btn sm" data-act="lesson-done">${ic('check')}${l && l.st === 2 ? 'Done' : 'Mark as done'}</button>` : '';
@@ -4298,10 +4488,11 @@ function paintChat() {
     ? (t.auto ? '' : '<div class="txt me"><div class="bub">' + esc(t.content) + '</div></div>')
     : splitTexts(t.content).filter(x => x.text).map(x => botText(x)).join('')).join('');
   const hello = !aiOK() ? 'BOLT is not available in this view. Open the page inside Claude and allow it to use Claude.'
-    : th.kind === 'quiz' ? 'stuck? just ask, ill hint before i spoil it' : 'ask me whatever. your notes, the syllabus, why you got that one wrong';
+    : th.kind === 'quiz' ? 'stuck? just ask, ill hint before i spoil it' : th.all ? 'ask me whatever, any subject. your notes, the syllabus, what to study next' : 'ask me whatever. your notes, the syllabus, why you got that one wrong';
+  const kept = th.kind === 'free' && msgs && !Chat.busy ? '<div class="mc-mem"><span class="lbl">Kept with your account</span><button class="link" data-act="chat-clear">' + (th.clr ? 'Tap again to clear' : 'Clear chat') + '</button></div>' : '';
   const empty = '<div class="mc-empty">' + faceHTML('lg', { look: true }) + '<p>' + hello + '</p></div>';
   const log = $('#mc-log');
-  log.innerHTML = (msgs || (Chat.busy ? '' : empty)) +
+  log.innerHTML = kept + (msgs || (Chat.busy ? '' : empty)) +
     (Chat.busy ? '<div id="mc-live"></div><div class="txt ai typing"><span class="face-gap"></span><div class="bub"><span class="dots"><i></i><i></i><i></i></span></div></div>' : '') +
     (Chat.err ? '<div class="msg err">' + esc(Chat.err) + '</div>' : '');
   drawFaces(log);
@@ -4338,9 +4529,13 @@ async function chatSend(text, auto) {
   text = String(text || '').trim();
   if (!th || Chat.busy || !text) return;
   if (!aiOK()) { toast('BOLT is not available in this view.'); return; }
-  th.turns.push({ role: 'user', content: text, auto: !!auto });
   Chat.busy = true; Chat.err = '';
   const ctl = Chat.ctl = new AbortController();
+  // a kept chat finishes loading first, so the reply and the save both include it
+  if (th.ready) { try { await th.ready; } catch (e) {} }
+  if (ctl.signal.aborted) { Chat.busy = false; if (Chat.ctl === ctl) Chat.ctl = null; if (Chat.open) paintChat(); return; }
+  th.clr = 0;
+  th.turns.push({ role: 'user', content: text, auto: !!auto });
   setFace('think');
   paintChat();
   const pace = S.profile.prefs.pace;
@@ -4348,7 +4543,7 @@ async function chatSend(text, auto) {
   let lastExpr = 'smirk';
   try {
     const rules = await chatRules(th, text);
-    const hist = th.turns.slice(-14).map(t => ({ role: t.role, content: String(t.content).slice(0, 8000) }));
+    const hist = th.turns.slice(th.kind === 'free' ? -20 : -14).map(t => ({ role: t.role, content: String(t.content).slice(0, 8000) }));
     const res = await AI.fn([{ role: 'user', content: rules }].concat(hist), {
       cache: false, signal: ctl.signal, modelTier: tier,
       onText: u => { if (Chat.thread === th) paintLive(u.text); }
@@ -4368,6 +4563,7 @@ async function chatSend(text, auto) {
   talkFace(false);
   setFace(lastExpr, 9000);
   if (th.kind === 'lesson' && th.turns.length) Store.saveLesson(th.did, th.lesson.id, th.turns);
+  if (th.kind === 'free' && th.key) Store.saveChat(th.key, th.turns);
   if (Chat.thread === th) paintChat();
   paintRail();
 }
@@ -4400,6 +4596,14 @@ const ACT = {
   'open-claude': () => openChat(defaultThread()),
   'close-claude': () => closeChat(),
   'chat-quick': el => chatSend(el.dataset.q),
+  'chat-clear': () => {
+    const th = Chat.thread;
+    if (!th || th.kind !== 'free' || Chat.busy) return;
+    if (!th.clr) { th.clr = 1; paintChat(); setTimeout(() => { if (th.clr) { th.clr = 0; if (Chat.thread === th && !Chat.busy) paintChat(); } }, 3500); return; }
+    th.clr = 0; th.turns = []; Chat.err = '';
+    if (th.key) Store.saveChat(th.key, []);
+    paintChat();
+  },
   'new-deck': () => openNewDeck(),
   sample: () => makeSample(),
   'set-active': el => { setActive(el.dataset.did); render(true); $('#main').scrollTop = 0; },
@@ -4409,7 +4613,16 @@ const ACT = {
 
   'st-deck': el => { UI.setup = { did: el.dataset.did, topics: [] }; render(); },
   'st-mode': el => setStudy(el.dataset.mode === 'quiz' ? { mode: 'quiz', len: Number(el.dataset.len) } : { mode: 'endless' }),
-  'st-fmt': el => { const k = el.dataset.f, st = S.profile.study, other = k === 'mc' ? 'sa' : 'mc'; if (st[k] && !st[other]) return toast('Keep at least one format on.'); setStudy({ [k]: !st[k] }); },
+  'st-fmt': el => { if (UI.setup) setDeckFmt(UI.setup.did, el.dataset.f); render(); },
+  'run-fmt': el => {
+    const s = UI.sess, f = el.dataset.f;
+    if (!s || !FMT_NOTE[f]) return;
+    Object.assign(s, fmtCfg(f));
+    setDeckFmt(s.did, f);
+    const box = $('#run-next');
+    if (box) box.innerHTML = nextFmtHTML(s);
+    if (!coarse()) focusAnswer();
+  },
   'st-focus': el => setStudy({ focus: el.dataset.f }),
   'st-topic': el => { const t = el.dataset.t, su = UI.setup; if (!t) su.topics = []; else if (su.topics.includes(t)) su.topics = su.topics.filter(x => x !== t); else su.topics.push(t); render(); },
   'st-topup': () => setStudy({ topup: !S.profile.study.topup }),
@@ -4434,7 +4647,7 @@ const ACT = {
   'lesson-open': el => openLesson(el.dataset.id),
   'lesson-quiz': () => lessonQuiz(),
   'lesson-done': () => { const th = Chat.thread, l = lessonOf(th); if (!l) return; l.st = 2; Store.saveDeck(th.did); toast('Lesson marked as done'); closeChat(); },
-  'ask-deck': () => openChat(defaultThread()),
+  'ask-deck': () => { const did = UI.learn || activeDeck(), d = S.decks[did]; openChat(d ? freeThread(did, { did, sub: S.subs[subOf(d)] ? subOf(d) : null }) : defaultThread()); },
 
   'lib-open': el => { UI.lib = { mode: 'deck', did: el.dataset.did, q: '' }; followDeck(el.dataset.did); render(true); $('#main').scrollTop = 0; },
   sub: el => selectSub(el.dataset.id),
@@ -4451,6 +4664,7 @@ const ACT = {
   'nd-mode': el => { UI.nd.mode = el.dataset.m; paintNewDeck(); },
   'nd-opt': el => { const k = el.dataset.k; UI.nd[k] = !UI.nd[k]; if (k === 'header') UI.nd.headerSet = true; paintNewDeck(); },
   'nd-count': el => { UI.nd.count = Number(el.dataset.n); paintNewDeck(); },
+  'nd-fmt': el => { UI.nd.fmt = el.dataset.f; paintNewDeck(); },
   'nd-build': () => ndBuild(),
   'build-stop': () => { if (UI.build && UI.build.ctl) UI.build.ctl.abort(); },
   'build-study': () => { const b = UI.build; startSession(b.topic ? { did: b.did, topics: [b.topic], mode: 'quiz', len: 10 } : { did: b.did }); },

@@ -32,8 +32,8 @@ function cloudBackend(db, uid) {
     try { return await fn(); }
     catch (e) { if (e && e.code === 'unavailable') { await sleep(700 + Math.random() * 900); return fn(); } throw e; }
   };
-  // sub-collections hang off a deck record by default, or off a subject record when the id says so
-  const sub = (did, col) => db.doc(base + '/' + (did.startsWith('s_') ? did : 'd_' + did)).collection(col);
+  // sub-collections hang off a deck record by default, or off a subject record or the profile when the id says so
+  const sub = (did, col) => db.doc(base + '/' + (did === 'profile' || did.startsWith('s_') ? did : 'd_' + did)).collection(col);
   return {
     // with `full`: merge into the stored document, creating it from full() when it does not exist yet
     put(key, data, full) {
@@ -225,7 +225,7 @@ const Store = {
     if (S.profile.sub === id) { S.profile.sub = null; Store.touchActive(); }
     delete S.subSyl[id];
     try {
-      for (const col of ['syl', 'pq', 'bp', 'pg']) {
+      for (const col of ['syl', 'pq', 'bp', 'pg', 'chat']) {
         const docs = await B.subGet('s_' + id, col);
         await Promise.all(docs.map(d => B.subDel('s_' + id, col, d.id)));
       }
@@ -363,10 +363,28 @@ const Store = {
     const keep = turns.slice(-40).map(t => ({ role: t.role, content: String(t.content).slice(0, 6000), auto: !!t.auto }));
     return track(B.subPut(did, 'les', lid, { turns: keep, t: now() })).catch(saveFailed);
   },
+  /* BOLT's open chats are kept: one for all subjects, one per subject, one per deck */
+  chatAt(key) {
+    if (key === 'all') return ['profile', 'all'];
+    if (key.startsWith('sub:')) return S.subs[key.slice(4)] ? ['s_' + key.slice(4), 'free'] : null;
+    return S.decks[key] ? [key, 'free'] : null;
+  },
+  async loadChat(key) {
+    const at = Store.chatAt(key);
+    if (!at) return [];
+    const d = await B.subOne(at[0], 'chat', at[1]);
+    return d && Array.isArray(d.turns) ? d.turns.filter(t => t && (t.role === 'user' || t.role === 'assistant') && typeof t.content === 'string') : [];
+  },
+  saveChat(key, turns) {
+    const at = Store.chatAt(key);
+    if (!at) return Promise.resolve();
+    const keep = turns.slice(-40).map(t => ({ role: t.role, content: String(t.content).slice(0, 6000), auto: !!t.auto }));
+    return track(B.subPut(at[0], 'chat', at[1], { turns: keep, t: now() })).catch(() => {});
+  },
   async deleteDeck(did) {
     delete S.decks[did]; delete S.cards[did]; delete S.src[did]; delete S.prog[did]; delete dirty.prog[did];
     try {
-      for (const col of ['cards', 'src', 'les']) {
+      for (const col of ['cards', 'src', 'les', 'chat']) {
         const docs = await B.subGet(did, col);
         await Promise.all(docs.map(d => B.subDel(did, col, d.id)));
       }

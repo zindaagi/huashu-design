@@ -143,6 +143,21 @@ function chooseFmt(s, card, p) {
   if (String(card.a).length > 48) pSA *= 0.3;
   return Math.random() < pSA ? 'sa' : 'mc';
 }
+/* a deck's question type. Decks made before this was a deck setting follow the old account-wide choice. */
+const FMTS = [['mix', 'Mix'], ['mc', 'Multiple choice'], ['sa', 'Short answer']];
+const FMT_NOTE = {
+  mix: 'New and shaky questions come as multiple choice, then switch to typed recall as they firm up.',
+  mc: 'Every question comes with four options to choose from.',
+  sa: 'You type every answer, and typos are forgiven.'
+};
+function deckFmt(did) {
+  const d = S.decks[did], f = d && d.fmt;
+  if (f === 'mix' || f === 'mc' || f === 'sa') return f;
+  const st = S.profile.study;
+  return st.mc && !st.sa ? 'mc' : st.sa && !st.mc ? 'sa' : 'mix';
+}
+const fmtCfg = f => ({ mc: f !== 'sa', sa: f !== 'mc' });
+const sessFmt = s => s.mc && s.sa ? 'mix' : s.mc ? 'mc' : 'sa';
 
 /* ----- marking typed answers ----- */
 const STOPW = new Set(['the', 'a', 'an', 'of', 'and', 'to', 'in', 'is', 'are', 'it', 'its', 'on', 'for', 'with', 'by', 'as', 'at']);
@@ -318,6 +333,47 @@ function pickExcerpts(text, query, budget) {
   let used = 0;
   for (const x of picked) { if (used + x.s.length > budget) continue; keep.push(x); used += x.s.length; if (used > budget * 0.92) break; }
   return keep.sort((a, b) => a.i - b.i).map(x => x.s).join('\n\n[...]\n\n');
+}
+/* the sections of several labelled texts that bear most on a query, kept under a budget.
+   Words are weighed by how rare they are across the texts, so "what" and "explain" do not drag everything in. */
+function pickAcross(sources, query, budget) {
+  const head = s => '### ' + s.label;
+  sources = sources.filter(s => s.text && s.text.trim());
+  if (!sources.length) return '';
+  if (sources.reduce((a, s) => a + s.text.length, 0) <= budget) return sources.map(s => head(s) + '\n' + s.text.trim()).join('\n\n');
+  const words = Array.from(new Set(norm(query).split(' ').filter(w => w.length >= 3 && !STOPW.has(w)))).sort((a, b) => b.length - a.length).slice(0, 28);
+  if (!words.length) return '';
+  const secs = [];
+  sources.forEach((src, si) => splitSections(src.text.slice(0, 160000), 1400).forEach((s, i) => secs.push({ si, i, s, low: s.toLowerCase(), sc: 0 })));
+  for (const w of words) {
+    const hits = [];
+    for (const x of secs) { let n = 0, at = x.low.indexOf(w); while (at >= 0 && n < 30) { n++; at = x.low.indexOf(w, at + w.length); } if (n) hits.push([x, n]); }
+    // a word that turns up in most sections says nothing about which ones matter
+    if (!hits.length || (secs.length >= 6 && hits.length > secs.length * 0.6)) continue;
+    const idf = Math.log(1 + secs.length / hits.length);
+    for (const [x, n] of hits) x.sc += idf * (1 + Math.log(n));
+  }
+  const cand = [];
+  let top = 0;
+  for (const x of secs) { if (!x.sc) continue; x.sc = x.sc / Math.sqrt(x.s.length + 200) * (sources[x.si].boost || 1); cand.push(x); if (x.sc > top) top = x.sc; }
+  if (!cand.length) return '';
+  // best first, but each pick from a text makes its next one count a little less, so one subject cannot crowd out another that matters nearly as much
+  const floor = top * 0.3, taken = {}, keep = [];
+  let used = 0;
+  while (used <= budget * 0.92) {
+    let best = null, bv = 0;
+    for (const x of cand) { if (x.done || x.sc < floor || used + x.s.length > budget) continue; const v = x.sc * Math.pow(0.85, taken[x.si] || 0); if (v > bv) { bv = v; best = x; } }
+    if (!best) break;
+    best.done = true; keep.push(best); used += best.s.length; taken[best.si] = (taken[best.si] || 0) + 1;
+  }
+  keep.sort((a, b) => (a.si - b.si) || (a.i - b.i));
+  const out = [];
+  let last = -1;
+  for (const x of keep) {
+    if (x.si !== last) { out.push((out.length ? '\n' : '') + head(sources[x.si])); last = x.si; } else out.push('[...]');
+    out.push(x.s);
+  }
+  return out.join('\n');
 }
 function cleanCard(r) {
   if (!r || typeof r !== 'object') return null;

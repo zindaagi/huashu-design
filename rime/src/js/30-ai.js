@@ -68,9 +68,11 @@ function genPrompt(o) {
   if (o.syllabus) L.push('- A SYLLABUS excerpt is included. Give priority to what it asks the student to know, and only test what this material covers.');
   L.push('- One fact or idea per question. Mix the kinds: definitions, causes and effects, comparisons, applications, numbers, sequences.');
   L.push('- The question must make sense on its own, without seeing the material.');
-  L.push('- "a" is the ideal short answer: a term, name, number or short phrase of at most 8 words wherever the material allows it.');
+  if (o.fmt === 'sa') L.push('- The student will TYPE every answer in this deck. "a" must be a term, name, number or phrase of at most 5 words with one natural wording, never a sentence. Word each question so that only that answer fits.');
+  else if (o.fmt === 'mc') L.push('- The student will answer every question in this deck by CHOOSING between four options. "a" may be a full phrase or one short sentence of at most 16 words when the idea needs it, so questions can test understanding and application as well as recall.');
+  else L.push('- "a" is the ideal short answer: a term, name, number or short phrase of at most 8 words wherever the material allows it.');
   L.push('- "alts" lists other wordings a fair marker would accept (abbreviations, synonyms, alternative spellings). Use [] when there are none.');
-  L.push('- "d" holds exactly 3 wrong options for a multiple-choice version. Make them plausible, the same kind and length as the answer, and clearly wrong to someone who knows the material. Never use "all of the above" or "none of the above".');
+  L.push('- "d" holds exactly 3 wrong options for a multiple-choice version. Make them plausible, the same kind and length as the answer, and clearly wrong to someone who knows the material. Never use "all of the above" or "none of the above".' + (o.fmt === 'mc' ? ' Build each wrong option from a real misconception or a near miss, so that choosing takes thought.' : ''));
   L.push('- "topic" is a label of 1 to 3 words. Reuse one label for related questions.' + (o.topicNames && o.topicNames.length ? ' Labels already in use: ' + o.topicNames.join('; ') + '.' : ''));
   L.push('- "why" is one sentence that explains the answer, shown after the student responds.');
   L.push('- Write in the language of the material.');
@@ -188,11 +190,12 @@ const BOLT_VOICE = [
   '',
   'Your face: begin every text with one tag in square brackets for the expression on your face as you say it, chosen from [smirk] [deadpan] [hype] [think] [sideeye] [oof] [shock] [soft]. Example: "[smirk] ok that one was free". Pick what fits that text: [oof] when they got it wrong, [hype] when they nailed something hard, [think] when you are working something out, [sideeye] when an answer is sus, [soft] when you are being kind, [deadpan] or [smirk] the rest of the time. The app turns the tag into your pixel face and hides it, so never mention the tags or describe your expression in words.'
 ];
-function boltRules(subject) {
+function boltRules(subject, names) {
   return BOLT_VOICE.concat([
     '',
     'What you judge against:',
-    '- The course is the NSW HSC (Year 12)' + (subject ? ', subject as the student named it: "' + subject + '". Work out which NESA course that is (for example "2U" maths is Mathematics Advanced and "3U" is Mathematics Extension 1).' : '.'),
+    names ? '- The student is doing the NSW HSC (Year 12)' + (names.length ? ' in these subjects, as they named them: ' + names.map(n => '"' + n + '"').join(', ') + '. Work out which NESA course each one is (for example "2U" maths is Mathematics Advanced and "3U" is Mathematics Extension 1).' : '.') + ' This chat is not tied to one subject: work out from each message which subject it belongs to and answer as the teacher of that course. If it could belong to more than one and the difference matters, ask which in one short text.'
+    : '- The course is the NSW HSC (Year 12)' + (subject ? ', subject as the student named it: "' + subject + '". Work out which NESA course that is (for example "2U" maths is Mathematics Advanced and "3U" is Mathematics Extension 1).' : '.'),
     '- Critique answers the way an HSC marker would: against the syllabus content and outcomes, the directive verb in the question (identify, outline, describe, explain, analyse, assess, evaluate and so on), and what the marking guidelines reward. Say what earns the marks, what is missing or vague, and how to say it tighter. Give a rough mark out of the likely marks when that helps.',
     '- Critique the question as well when it is useful: which part of the syllabus it sits under, whether the HSC would really ask it that way, and how it tends to show up in an exam.',
     '- Use the SYLLABUS text below wherever it covers the point. Where it is silent, or none is provided, use your own knowledge of the current NSW Year 12 course and its exam. If you are not sure something is in the current syllabus, say you are not sure instead of guessing.',
@@ -200,7 +203,75 @@ function boltRules(subject) {
     '- Be accurate above all. If the material is unclear or you are unsure, say so.'
   ]);
 }
+/* the All tab: BOLT is handed the whole account, and the parts of every syllabus and set of notes that bear on the message */
+const daysAgo = t => { const d = Math.round((now() - t) / DAY); return d <= 0 ? 'today' : d === 1 ? 'yesterday' : d + ' days ago'; };
+async function everything(query) {
+  const sids = subIds();
+  const dids = Object.keys(S.decks).sort((a, b) => (S.decks[b].ut || 0) - (S.decks[a].ut || 0)).slice(0, 36);
+  const quiet = p => Promise.resolve(p).then(v => v, () => null);
+  await Promise.all(sids.map(id => quiet(Store.loadSubSyl(id))).concat(dids.map(id => quiet(Store.loadCards(id))), dids.map(id => quiet(Store.loadSrc(id)))));
+  const nm = id => (S.subs[id] || {}).name || '';
+  const L = [];
+  L.push('Today: ' + plural(today().n, 'question') + ' answered, daily goal ' + (S.profile.goal || 30) + '. Day streak: ' + dayStreak() + '. Level ' + level().lv + '.');
+  L.push('', 'Subjects and decks:');
+  const groups = sids.map(id => [id, nm(id)]);
+  if (dids.some(d => subOf(S.decks[d]) === '_')) groups.push(['_', sids.length ? 'No subject' : 'Decks']);
+  if (!groups.length) L.push('(nothing yet: no subjects and no decks)');
+  for (const [sid, name] of groups) {
+    const sj = S.subs[sid], mine = dids.filter(d => subOf(S.decks[d]) === sid);
+    L.push('- ' + name + (sj ? (sj.syl ? ' (syllabus added)' : ' (no syllabus added yet)') : '') + (mine.length ? '' : ': no decks yet'));
+    for (const did of mine) {
+      const d = S.decks[did], st = deckStats(did), weak = weakTopics(did, 3).map(t => t.topic), strong = strongTopics(did, 2).map(t => t.topic);
+      L.push('    deck "' + d.name + '": ' + plural(st.total, 'question') + ', ' + st.seen + ' tried, mastery ' + pct(st.mastery) + '%, ' + st.due + ' due now' + (st.acc != null ? ', ' + pct(st.acc) + '% of answers right' : '') +
+        (weak.length ? '. weakest topics: ' + weak.join('; ') : '') + (strong.length ? '. strongest: ' + strong.join('; ') : ''));
+    }
+    for (const p of ((sj && sj.papers) || [])) L.push('    ' + (p.orig ? 'boss questions' : 'past paper "' + p.title + '"') + ': ' + plural(p.n | 0, 'question') + ', best so far ' + (p.best | 0) + ' of ' + (p.marks | 0) + ' marks');
+  }
+  const ses = (S.profile.sessions || []).slice(0, 8);
+  if (ses.length) {
+    L.push('', 'Recent sessions, newest first:');
+    for (const s of ses) L.push('- ' + daysAgo(s.t) + ': ' + s.name + (s.mode === 'paper' ? ', ' + s.c + ' of ' + (s.c + s.w) + ' marks' : ', ' + s.c + ' right and ' + s.w + ' wrong'));
+  }
+  const missed = [];
+  for (const did of dids) for (const c of (S.cards[did] || [])) { const p = (S.prog[did] || {})[c.id]; if (p && p[P.SEEN] > p[P.RIGHT]) missed.push({ did, c, n: p[P.SEEN] - p[P.RIGHT], of: p[P.SEEN], m: mastery(p) }); }
+  missed.sort((a, b) => (b.n - a.n) || (a.m - b.m));
+  if (missed.length) {
+    L.push('', 'Questions they get wrong, most often first:');
+    for (const x of missed.slice(0, 10)) { const d = S.decks[x.did], sj = nm(subOf(d)); L.push('- [' + (sj ? sj + ', ' : '') + d.name + '] ' + String(x.c.q).slice(0, 160) + ' | answer: ' + String(x.c.a).slice(0, 80) + ' | wrong ' + x.n + ' of ' + plural(x.of, 'try', 'tries')); }
+  }
+  // a subject named in the message pulls its own syllabus and notes forward
+  const qt = norm(query).split(' ').filter(w => w.length >= 2 && !STOPW.has(w));
+  const hot = new Set(sids.filter(id => norm(nm(id)).split(' ').some(nt => nt.length >= 2 && qt.some(w => w === nt || (nt.length >= 3 && w.startsWith(nt)) || (w.length >= 3 && nt.startsWith(w))))));
+  const boost = sid => hot.has(sid) ? 1.7 : 1;
+  const syl = [], mat = [];
+  for (const id of sids) if (S.subSyl[id]) syl.push({ label: nm(id) + ' syllabus', text: S.subSyl[id], boost: boost(id) });
+  for (const did of dids) {
+    const src = S.src[did], d = S.decks[did], sid = subOf(d);
+    if (!src) continue;
+    const lab = (nm(sid) ? nm(sid) + ', ' : '') + 'deck "' + d.name + '"';
+    if (src.syllabus) syl.push({ label: lab + ', syllabus notes', text: src.syllabus, boost: boost(sid) });
+    for (const p of src.parts) mat.push({ label: lab + ', ' + p.name, text: p.text, boost: boost(sid) });
+  }
+  let sylText = pickAcross(syl, query, 8000);
+  // named a subject without naming anything in it: the start of that syllabus is the best guide to what they mean
+  if (!sylText) { const named = syl.filter(x => x.boost > 1 && x.text.trim()); sylText = named.map(x => '### ' + x.label + ' (the start of it)\n' + x.text.trim().slice(0, Math.floor(6000 / named.length))).join('\n\n'); }
+  return { names: sids.map(nm), overview: L.join('\n'), syl: sylText, mat: pickAcross(mat, query, 12000), hasSyl: syl.length > 0 };
+}
+async function allRules(th, query) {
+  const us = th.turns.filter(t => t.role === 'user').slice(-2).map(t => t.content).join(' ');
+  const la = th.turns.filter(t => t.role === 'assistant').slice(-1)[0];
+  const ev = await everything((query || '') + ' ' + us + ' ' + (la ? String(la.content).slice(0, 600) : ''));
+  const L = boltRules('', ev.names);
+  L.push('', 'EVERYTHING IN THE STUDENT\u2019S APP');
+  L.push('You can see their whole account here: every subject and deck with scores, weakest topics, past papers, recent sessions and the questions they get wrong. After that come the parts of their syllabuses and notes that bear on this message. Use all of it. When they ask what to study, how they are going or where they are weak, answer from these numbers and name the deck or topic. Only excerpts of the notes are shown, so if they ask about something in their notes that is not below, say you cannot see that part right now.');
+  L.push('', ev.overview);
+  L.push('', 'SYLLABUS (excerpts most relevant to this turn, from any subject)', ev.syl || (ev.hasSyl ? '(nothing in their syllabuses matched this message: go on your own knowledge of the course)' : '(no syllabus added yet: go on your own knowledge of the courses, and if it would help, mention once that they can add a syllabus to each subject so you can mark against it exactly)'));
+  if (ev.mat) L.push('', 'MATERIAL (excerpts most relevant to this turn, from any deck)', ev.mat);
+  L.push('', 'The conversation follows.');
+  return L.join('\n');
+}
 async function chatRules(th, query) {
+  if (th.all) return allRules(th, query);
   const d = th.did ? S.decks[th.did] : null, c = await courseOf(th.did, th.sub);
   const L = boltRules(c.subject);
   let q = query || '';

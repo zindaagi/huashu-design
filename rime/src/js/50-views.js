@@ -190,7 +190,7 @@ function viewSetup() {
   if (!ids.length) return needDeck('Study', 'Sessions draw on a deck. Make one from your notes, or try the sample.');
   const su = UI.setup || (UI.setup = { did: activeDeck(), topics: [] });
   if (!ids.includes(su.did)) { su.did = activeDeck(); su.topics = []; }
-  const cfg = S.profile.study, did = su.did, d = S.decks[did];
+  const cfg = S.profile.study, did = su.did, d = S.decks[did], fmt = deckFmt(did);
   ensureCards(did);
   const topics = S.cards[did] ? topicList(did) : [];
   su.topics = su.topics.filter(t => topics.includes(t));
@@ -203,8 +203,8 @@ function viewSetup() {
   <div class="setup">
     ${ids.length > 1 ? `<div class="sec"><span class="lbl">Deck</span><div class="chips">${ids.map(id => chip(esc(S.decks[id].name), id === did, 'st-deck', 'data-did="' + id + '"')).join('')}</div></div>` : ''}
     <div class="sec"><span class="lbl">Length</span><div class="chips">${chip('Endless', cfg.mode === 'endless', 'st-mode', 'data-mode="endless"')}${[10, 20, 40].map(n => chip('Quiz · ' + n, cfg.mode === 'quiz' && cfg.len === n, 'st-mode', 'data-mode="quiz" data-len="' + n + '"')).join('')}</div></div>
-    <div class="sec"><span class="lbl">Question formats</span><div class="chips">${chip('Multiple choice', cfg.mc, 'st-fmt', 'data-f="mc"')}${chip('Short answer', cfg.sa, 'st-fmt', 'data-f="sa"')}</div>
-      ${cfg.mc && cfg.sa ? '<p class="note">Mixed: new and shaky questions start as multiple choice, then switch to typed recall as they firm up.</p>' : ''}</div>
+    <div class="sec"><span class="lbl">Question types</span><div class="chips">${FMTS.map(f => chip(f[1], fmt === f[0], 'st-fmt', 'data-f="' + f[0] + '"')).join('')}</div>
+      <p class="note">${FMT_NOTE[fmt]} Kept with this deck, and you can switch mid-quiz.</p></div>
     <div class="sec"><span class="lbl">Focus</span><div class="chips">${chip('Adaptive', cfg.focus === 'adaptive', 'st-focus', 'data-f="adaptive"')}${chip('Weak spots', cfg.focus === 'weak', 'st-focus', 'data-f="weak"')}${chip('Strengths', cfg.focus === 'strong', 'st-focus', 'data-f="strong"')}</div><p class="note">${focusNote}</p></div>
     ${topics.length > 1 ? `<div class="sec"><span class="lbl">Topics</span><div class="chips">${chip('All', !su.topics.length, 'st-topic', 'data-t=""')}${topics.map(tp => chip(esc(tp), su.topics.includes(tp), 'st-topic', 'data-t="' + esc(tp) + '"')).join('')}</div></div>` : ''}
     ${cfg.mode === 'endless' && canTop ? `<div class="sec"><span class="lbl">Fresh questions</span><div class="chips">${chip('Keep writing new ones with Claude', cfg.topup, 'st-topup')}</div><p class="note">When unseen questions run low, Claude writes ten more from your material, aimed at your weak topics.</p></div>` : ''}
@@ -246,6 +246,11 @@ function runTopHTML(s) {
     <span class="pill streak-b" id="run-streak" title="Right answers in a row">${ic('spark')}<b>${s.streak}</b></span>
     <button class="btn sm" data-act="ask-claude" ${aiOK() ? '' : 'disabled'}>${faceHTML('xs')}<span>Ask</span></button>`;
 }
+/* the switch under a question: what the next one will be */
+function nextFmtHTML(s) {
+  const f = sessFmt(s);
+  return `<span class="lbl" id="nf-lbl">Next question</span><div class="seg" role="group" aria-labelledby="nf-lbl">${FMTS.map(x => `<button class="seg-b" data-act="run-fmt" data-f="${x[0]}" aria-pressed="${f === x[0]}">${x[1]}</button>`).join('')}</div>`;
+}
 function viewRun() {
   const s = UI.sess, c = s.cur;
   if (!c) return '';
@@ -262,6 +267,7 @@ function viewRun() {
       ${body}
       <div id="fb">${fbHTML(c)}</div>
     </article>
+    <div class="nextfmt" id="run-next">${nextFmtHTML(s)}</div>
     <p class="lbl" style="text-align:center">${esc(S.decks[s.did].name)}${UI.build && UI.build.status === 'run' && UI.build.did === s.did ? ' · writing fresh questions' : ''}</p>
   </div>`;
 }
@@ -379,6 +385,7 @@ function viewNewDeck() {
       <div><button class="btn sm" data-act="nd-sylfile">${ic('file')}Upload a syllabus file</button><input type="file" id="nd-sylfile" hidden accept="${FILE_ACCEPT}"></div>
     </div>
     <div class="sec" id="nd-count"></div>
+    <div class="sec" id="nd-fmt"></div>
     <div class="chips"><button class="btn pri lg" data-act="nd-build" id="nd-go">Build deck</button><button class="btn lg ghost" data-act="lib-back">Cancel</button></div>
   </div>`;
 }

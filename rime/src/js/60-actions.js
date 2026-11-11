@@ -60,7 +60,9 @@ function selectSub(id) {
   S.profile.sub = want;
   Store.touchActive();
   UI.setup = null; UI.learn = null;
-  if (UI.route === 'library') UI.lib = { mode: 'list', did: null, q: '' };
+  // a deck page left open from another subject does not follow you into this one
+  const open = UI.lib.mode === 'deck' && S.decks[UI.lib.did];
+  if (UI.route === 'library' || (open && want && subOf(open) !== want)) UI.lib = { mode: 'list', did: null, q: '' };
   applyLook();
   zap();
   if (UI.route === 'prefs' || (UI.route === 'study' && UI.done && !UI.sess)) { UI.done = null; go('home'); }
@@ -140,7 +142,7 @@ function focusAnswer() {
 
 /* ----- sessions ----- */
 async function startSession(o) {
-  const cfg = Object.assign({}, S.profile.study, o);
+  const cfg = Object.assign({}, S.profile.study, fmtCfg(deckFmt(o.did)), o);
   let cards;
   try { cards = await Store.loadCards(o.did); } catch (e) { toast('This deck could not be loaded. Check your connection.'); return; }
   let pool = cards;
@@ -341,6 +343,14 @@ function maybeTopup(s) {
   generate(s.did, { n: 10, topics: weakTopics(s.did, 3).map(t => t.topic), quiet: true });
 }
 
+/* the question type belongs to the deck, so it is the same on every device and in every session */
+function setDeckFmt(did, f) {
+  const d = S.decks[did];
+  if (!d || !FMT_NOTE[f] || deckFmt(did) === f && d.fmt === f) return;
+  d.fmt = f;
+  Store.saveDeck(did);
+}
+
 /* ----- writing questions with Claude ----- */
 async function generate(did, o) {
   o = o || {};
@@ -366,7 +376,7 @@ async function generate(did, o) {
       const sec = secs[(start + Math.floor(k * secs.length / calls)) % secs.length];
       await aiGenerate({
         material: sec, syllabus: syllabusText(course, meta.name + ' ' + sec, 9000), subject: course.subject, n: want,
-        focus: o.focus || '', topics: o.topics || [], lessonTitle: o.lessonTitle || '',
+        focus: o.focus || '', topics: o.topics || [], lessonTitle: o.lessonTitle || '', fmt: deckFmt(did),
         existing: cards.slice(-50).map(c => c.q), topicNames: Array.from(new Set(cards.map(c => c.topic))).slice(0, 30), signal: b.ctl.signal,
         onCard: raw => {
           const c = cleanCard(raw);
@@ -418,7 +428,7 @@ function paintBuild() {
 const prettyName = f => { const s = String(f).replace(/\.[a-z0-9]{1,5}$/i, '').replace(/[_-]+/g, ' ').trim(); return (s.charAt(0).toUpperCase() + s.slice(1)).slice(0, 60); };
 const firstLine = t => { const l = String(t).split('\n').map(x => x.replace(/^[#>\-*\s|]+/, '').trim()).find(x => x.length > 2) || ''; return l.split(/[.:;|\t]/)[0].trim().slice(0, 40); };
 function openNewDeck() {
-  UI.nd = { sub: S.subs[curSub()] ? curSub() : '', name: '', text: '', syl: '', files: [], count: 30, mode: 'table', touched: false, header: false, headerSet: false, both: false, table: null, busy: 0 };
+  UI.nd = { sub: S.subs[curSub()] ? curSub() : '', name: '', text: '', syl: '', files: [], count: 30, fmt: 'mix', mode: 'table', touched: false, header: false, headerSet: false, both: false, table: null, busy: 0 };
   UI.lib = { mode: 'new', did: null, q: '' };
   go('library');
 }
@@ -448,6 +458,9 @@ function paintNewDeck() {
     box.innerHTML = aiOK() ? '' : `<div class="banner">${ic('warn')}<span>Claude is not available in this view, so it cannot write questions here. Paste a table instead, one row per line with a tab or comma between term and answer, and the rows become cards.</span></div>`;
   }
   $('#nd-count').innerHTML = eff === 'ai' && aiOK() ? `<span class="lbl">Questions to start with</span><div class="chips">${[15, 30, 60].map(n => chip(String(n), nd.count === n, 'nd-count', 'data-n="' + n + '"')).join('')}</div><p class="note">You can start studying as soon as the first few arrive, and add more at any time.</p>` : '';
+  const nf = $('#nd-fmt');
+  if (nf) nf.innerHTML = '<span class="lbl">Question types</span><div class="chips">' + FMTS.map(f => chip(f[1], nd.fmt === f[0], 'nd-fmt', 'data-f="' + f[0] + '"')).join('') + '</div><p class="note">' + FMT_NOTE[nd.fmt] +
+    (eff === 'ai' && aiOK() && nd.fmt !== 'mix' ? (nd.fmt === 'sa' ? ' BOLT keeps the answers short enough to type.' : ' BOLT writes fuller answers with close wrong options.') : '') + ' You can switch later, even mid-quiz.</p>';
   $('#nd-go').disabled = nd.busy > 0;
 }
 const ndDetectSoon = debounce(paintNewDeck, 350);
@@ -491,7 +504,7 @@ async function ndBuild() {
   if (eff === 'ai' && !aiOK()) { toast('Claude is not available here. Paste a table to make cards without it.', 4200); return; }
   $('#nd-go').disabled = true;
   const name = nd.name || (files[0] ? prettyName(files[0].name) : firstLine(nd.text)) || 'Untitled deck';
-  const did = newDeckRecord(name, S.subs[nd.sub] ? { sub: nd.sub } : null);
+  const did = newDeckRecord(name, Object.assign({ fmt: nd.fmt }, S.subs[nd.sub] ? { sub: nd.sub } : null));
   followDeck(did);
   UI.nd = null;
   try {
@@ -715,7 +728,17 @@ function quickPrompts(th) {
   if (th.kind === 'quiz') { const c = th.cur && th.cur(); return c && c.state === 'done' ? ['Critique my answer', 'How would the HSC ask this?', 'Give me a similar one'] : ['Give me a hint', 'Explain the idea behind this', 'Reveal the answer and explain']; }
   if (th.kind === 'lesson') return ['Give me an example', 'Explain that more simply', 'How is this examined?'];
   if (th.kind === 'review') return ['What pattern do you see in my mistakes?', 'Re-teach the hardest one'];
+  if (th.all) return ['What should I study today?', 'Where am I weakest overall?', 'Test me on a weak spot'];
   return ['What should I focus on?', 'Explain my weakest topic', 'What does the syllabus want here?'];
+}
+/* open chats are kept with the account, so BOLT picks up where the two of you left off */
+function freeThread(key, base) {
+  let th = Chat.free[key];
+  if (!th) {
+    th = Chat.free[key] = Object.assign({ kind: 'free', key, turns: [] }, base);
+    th.ready = Store.loadChat(key).then(turns => { th.turns = turns.concat(th.turns); }, () => {}).then(() => { th.ready = null; if (Chat.thread === th && !Chat.busy) paintChat(); });
+  }
+  return th;
 }
 function openChat(th) {
   if (Chat.ctl) Chat.ctl.abort();
@@ -740,9 +763,11 @@ function closeChat() {
 }
 function defaultThread() {
   if (UI.sess && UI.route === 'study') return Chat.quiz || (Chat.quiz = { kind: 'quiz', did: UI.sess.did, turns: [], cur: () => UI.sess && UI.sess.cur });
+  const sub = curSub();
+  // the All tab: one chat that sees every subject
+  if (!sub) return freeThread('all', { all: true, did: null, sub: null });
   const did = (UI.route === 'learn' && UI.learn) || (UI.route === 'library' && UI.lib.mode === 'deck' && UI.lib.did) || activeDeck() || '';
-  const sub = curSub(), key = did || ('sub:' + (sub || ''));
-  return Chat.free[key] || (Chat.free[key] = { kind: 'free', did: did || null, sub: S.subs[sub] ? sub : null, turns: [] });
+  return freeThread(did || ('sub:' + sub), { did: did || null, sub: S.subs[sub] ? sub : null });
 }
 /* one of BOLT's texts: his face as he says it, then the bubble */
 const botText = (x, cls) => '<div class="txt ai' + (cls || '') + '">' + faceHTML('sm', { mood: false, face: x.expr }) + '<div class="bub prose">' + md(x.text) + '</div></div>';
@@ -750,7 +775,7 @@ function paintChat() {
   const th = Chat.thread;
   if (!th) return;
   const sj = th.did && S.decks[th.did] ? S.subs[subOf(S.decks[th.did])] : S.subs[th.sub];
-  $('#mc-ctx').textContent = th.kind === 'quiz' ? 'on your current question' : th.kind === 'lesson' ? th.title : th.kind === 'review' ? 'going over your misses' : th.did && S.decks[th.did] ? S.decks[th.did].name : sj ? sj.name : 'online, allegedly studying';
+  $('#mc-ctx').textContent = th.kind === 'quiz' ? 'on your current question' : th.kind === 'lesson' ? th.title : th.kind === 'review' ? 'going over your misses' : th.all ? 'all your subjects' : th.did && S.decks[th.did] ? S.decks[th.did].name : sj ? sj.name : 'online, allegedly studying';
   const tools = $('#mc-tools'), l = lessonOf(th);
   tools.hidden = th.kind !== 'lesson';
   tools.innerHTML = th.kind === 'lesson' ? `<button class="btn sm" data-act="lesson-quiz" ${Chat.busy ? 'disabled' : ''}>${ic('bolt')}Quiz me on this</button><button class="btn sm" data-act="lesson-done">${ic('check')}${l && l.st === 2 ? 'Done' : 'Mark as done'}</button>` : '';
@@ -758,10 +783,11 @@ function paintChat() {
     ? (t.auto ? '' : '<div class="txt me"><div class="bub">' + esc(t.content) + '</div></div>')
     : splitTexts(t.content).filter(x => x.text).map(x => botText(x)).join('')).join('');
   const hello = !aiOK() ? 'BOLT is not available in this view. Open the page inside Claude and allow it to use Claude.'
-    : th.kind === 'quiz' ? 'stuck? just ask, ill hint before i spoil it' : 'ask me whatever. your notes, the syllabus, why you got that one wrong';
+    : th.kind === 'quiz' ? 'stuck? just ask, ill hint before i spoil it' : th.all ? 'ask me whatever, any subject. your notes, the syllabus, what to study next' : 'ask me whatever. your notes, the syllabus, why you got that one wrong';
+  const kept = th.kind === 'free' && msgs && !Chat.busy ? '<div class="mc-mem"><span class="lbl">Kept with your account</span><button class="link" data-act="chat-clear">' + (th.clr ? 'Tap again to clear' : 'Clear chat') + '</button></div>' : '';
   const empty = '<div class="mc-empty">' + faceHTML('lg', { look: true }) + '<p>' + hello + '</p></div>';
   const log = $('#mc-log');
-  log.innerHTML = (msgs || (Chat.busy ? '' : empty)) +
+  log.innerHTML = kept + (msgs || (Chat.busy ? '' : empty)) +
     (Chat.busy ? '<div id="mc-live"></div><div class="txt ai typing"><span class="face-gap"></span><div class="bub"><span class="dots"><i></i><i></i><i></i></span></div></div>' : '') +
     (Chat.err ? '<div class="msg err">' + esc(Chat.err) + '</div>' : '');
   drawFaces(log);
@@ -798,9 +824,13 @@ async function chatSend(text, auto) {
   text = String(text || '').trim();
   if (!th || Chat.busy || !text) return;
   if (!aiOK()) { toast('BOLT is not available in this view.'); return; }
-  th.turns.push({ role: 'user', content: text, auto: !!auto });
   Chat.busy = true; Chat.err = '';
   const ctl = Chat.ctl = new AbortController();
+  // a kept chat finishes loading first, so the reply and the save both include it
+  if (th.ready) { try { await th.ready; } catch (e) {} }
+  if (ctl.signal.aborted) { Chat.busy = false; if (Chat.ctl === ctl) Chat.ctl = null; if (Chat.open) paintChat(); return; }
+  th.clr = 0;
+  th.turns.push({ role: 'user', content: text, auto: !!auto });
   setFace('think');
   paintChat();
   const pace = S.profile.prefs.pace;
@@ -808,7 +838,7 @@ async function chatSend(text, auto) {
   let lastExpr = 'smirk';
   try {
     const rules = await chatRules(th, text);
-    const hist = th.turns.slice(-14).map(t => ({ role: t.role, content: String(t.content).slice(0, 8000) }));
+    const hist = th.turns.slice(th.kind === 'free' ? -20 : -14).map(t => ({ role: t.role, content: String(t.content).slice(0, 8000) }));
     const res = await AI.fn([{ role: 'user', content: rules }].concat(hist), {
       cache: false, signal: ctl.signal, modelTier: tier,
       onText: u => { if (Chat.thread === th) paintLive(u.text); }
@@ -828,6 +858,7 @@ async function chatSend(text, auto) {
   talkFace(false);
   setFace(lastExpr, 9000);
   if (th.kind === 'lesson' && th.turns.length) Store.saveLesson(th.did, th.lesson.id, th.turns);
+  if (th.kind === 'free' && th.key) Store.saveChat(th.key, th.turns);
   if (Chat.thread === th) paintChat();
   paintRail();
 }
@@ -860,6 +891,14 @@ const ACT = {
   'open-claude': () => openChat(defaultThread()),
   'close-claude': () => closeChat(),
   'chat-quick': el => chatSend(el.dataset.q),
+  'chat-clear': () => {
+    const th = Chat.thread;
+    if (!th || th.kind !== 'free' || Chat.busy) return;
+    if (!th.clr) { th.clr = 1; paintChat(); setTimeout(() => { if (th.clr) { th.clr = 0; if (Chat.thread === th && !Chat.busy) paintChat(); } }, 3500); return; }
+    th.clr = 0; th.turns = []; Chat.err = '';
+    if (th.key) Store.saveChat(th.key, []);
+    paintChat();
+  },
   'new-deck': () => openNewDeck(),
   sample: () => makeSample(),
   'set-active': el => { setActive(el.dataset.did); render(true); $('#main').scrollTop = 0; },
@@ -869,7 +908,16 @@ const ACT = {
 
   'st-deck': el => { UI.setup = { did: el.dataset.did, topics: [] }; render(); },
   'st-mode': el => setStudy(el.dataset.mode === 'quiz' ? { mode: 'quiz', len: Number(el.dataset.len) } : { mode: 'endless' }),
-  'st-fmt': el => { const k = el.dataset.f, st = S.profile.study, other = k === 'mc' ? 'sa' : 'mc'; if (st[k] && !st[other]) return toast('Keep at least one format on.'); setStudy({ [k]: !st[k] }); },
+  'st-fmt': el => { if (UI.setup) setDeckFmt(UI.setup.did, el.dataset.f); render(); },
+  'run-fmt': el => {
+    const s = UI.sess, f = el.dataset.f;
+    if (!s || !FMT_NOTE[f]) return;
+    Object.assign(s, fmtCfg(f));
+    setDeckFmt(s.did, f);
+    const box = $('#run-next');
+    if (box) box.innerHTML = nextFmtHTML(s);
+    if (!coarse()) focusAnswer();
+  },
   'st-focus': el => setStudy({ focus: el.dataset.f }),
   'st-topic': el => { const t = el.dataset.t, su = UI.setup; if (!t) su.topics = []; else if (su.topics.includes(t)) su.topics = su.topics.filter(x => x !== t); else su.topics.push(t); render(); },
   'st-topup': () => setStudy({ topup: !S.profile.study.topup }),
@@ -894,7 +942,7 @@ const ACT = {
   'lesson-open': el => openLesson(el.dataset.id),
   'lesson-quiz': () => lessonQuiz(),
   'lesson-done': () => { const th = Chat.thread, l = lessonOf(th); if (!l) return; l.st = 2; Store.saveDeck(th.did); toast('Lesson marked as done'); closeChat(); },
-  'ask-deck': () => openChat(defaultThread()),
+  'ask-deck': () => { const did = UI.learn || activeDeck(), d = S.decks[did]; openChat(d ? freeThread(did, { did, sub: S.subs[subOf(d)] ? subOf(d) : null }) : defaultThread()); },
 
   'lib-open': el => { UI.lib = { mode: 'deck', did: el.dataset.did, q: '' }; followDeck(el.dataset.did); render(true); $('#main').scrollTop = 0; },
   sub: el => selectSub(el.dataset.id),
@@ -911,6 +959,7 @@ const ACT = {
   'nd-mode': el => { UI.nd.mode = el.dataset.m; paintNewDeck(); },
   'nd-opt': el => { const k = el.dataset.k; UI.nd[k] = !UI.nd[k]; if (k === 'header') UI.nd.headerSet = true; paintNewDeck(); },
   'nd-count': el => { UI.nd.count = Number(el.dataset.n); paintNewDeck(); },
+  'nd-fmt': el => { UI.nd.fmt = el.dataset.f; paintNewDeck(); },
   'nd-build': () => ndBuild(),
   'build-stop': () => { if (UI.build && UI.build.ctl) UI.build.ctl.abort(); },
   'build-study': () => { const b = UI.build; startSession(b.topic ? { did: b.did, topics: [b.topic], mode: 'quiz', len: 10 } : { did: b.did }); },

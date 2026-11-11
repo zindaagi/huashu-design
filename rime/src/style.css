@@ -224,6 +224,8 @@ svg{display:block}
 .run-top{display:flex;align-items:center;gap:10px}
 .run-mid{flex:1;min-width:0;display:flex;align-items:center;gap:10px;font-size:12px;color:var(--fg2)}
 .run-mid .meter{flex:1}
+/* narrow phones: the word gives way so the score never slides under the streak */
+@media (max-width:400px){.run-top{gap:8px}.run-mid{gap:8px}.run-mid>.lbl{display:none}}
 .q{position:relative;display:flex;flex-direction:column;gap:16px;padding:20px;background:var(--panel);border:1px solid var(--line);border-radius:var(--r);animation:qin .18s ease-out}
 .q-meta{display:flex;flex-wrap:wrap;gap:6px 10px;align-items:center}
 .tag{font:500 10px/1 var(--fm);letter-spacing:.12em;text-transform:uppercase;padding:4px 6px;border:1px solid var(--line2);border-radius:3px;color:var(--fg2)}
@@ -390,6 +392,17 @@ svg{display:block}
 @keyframes facebob{0%,100%{transform:translateY(0)}50%{transform:translateY(calc(var(--u) * -1))}}
 @keyframes facepop{0%{transform:scale(1)}35%{transform:scale(1.2) rotate(-5deg)}70%{transform:scale(.96) rotate(2deg)}100%{transform:scale(1)}}
 @keyframes bub{from{opacity:0;transform:translateY(8px) scale(.96)}}
+
+/* the switch under a quiz question: what the next one will be */
+.nextfmt{display:flex;flex-wrap:wrap;align-items:center;justify-content:center;gap:8px 12px}
+.seg{display:inline-flex;max-width:100%;border:1px solid var(--line2);border-radius:var(--r);overflow:hidden;background:var(--sunk)}
+.seg-b{min-height:38px;padding:0 13px;color:var(--fg2);font:500 11px/1.15 var(--fm);letter-spacing:.07em;text-transform:uppercase;white-space:nowrap;transition:background .12s,color .12s}
+.seg-b+.seg-b{border-left:1px solid var(--line2)}
+.seg-b:hover{color:var(--fg)}
+.seg-b[aria-pressed="true"]{background:var(--fg);color:var(--bg)}
+@media (max-width:380px){.seg-b{padding:0 9px;letter-spacing:.04em}}
+.mc-mem{display:flex;align-items:center;justify-content:center;gap:10px;padding-bottom:4px}
+.mc-mem .link{font-size:12px}
 
 /* ---------- papers and exam mode ---------- */
 .sec-h:has(>.sel){flex-wrap:wrap;align-items:center}
